@@ -1,0 +1,28 @@
+/* src/styles/page.module.css */
+.dashboardContainer {
+  padding: 20px;
+}
+
+.widgetContainer {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.widget {
+  padding: 20px;
+  border-radius: 8px;
+  color: white;
+}
+
+.blue {
+  background: #3B82F6;
+}
+
+.green {
+  background: #10B981;
+}
+
+.orange {
+  background: #F59E0B;
+}

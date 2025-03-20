@@ -1,0 +1,38 @@
+.addUserContainer {
+    max-width: 500px;
+    margin: 50px auto;
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  .addUserForm {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .addUserForm input,
+  .addUserForm select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+  }
+  
+  .addUserForm button {
+    background: var(--primary-color);
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s ease;
+  }
+  
+  .addUserForm button:hover {
+    background: var(--primary-hover);
+  }  

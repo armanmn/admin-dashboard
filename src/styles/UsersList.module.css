@@ -1,0 +1,102 @@
+.usersTable {
+    width: 100%;
+    border-collapse: collapse; /* ✅ Սահմանագծերը ճիշտ միացնելու համար */
+    margin-top: 20px;
+    table-layout: auto; /* ✅ Հեռացնում ենք fixed layout-ը, որպեսզի սյուները ճիշտ բաշխվեն */
+}
+
+/* ✅ Table Head-ի ձևավորում */
+.usersTable th {
+    background-color: #f4f4f4;
+    text-align: left;
+    padding: 12px 10px;
+    white-space: nowrap; /* ✅ Հեռացնում ենք տեքստի անկանոն կոտրում */
+}
+
+/* ✅ Սյուների հավասարեցում */
+.usersTable th, .usersTable td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #ddd; /* ✅ Հավասարաչափ գծեր */
+    text-align: left;
+    vertical-align: middle; /* ✅ Հավասարեցում բոլոր բջիջների համար */
+}
+
+/* ✅ Status և Actions սյուների կենտրոնացում */
+.usersTable th:nth-child(8),
+.usersTable th:nth-child(9),
+.usersTable td:nth-child(8),
+.usersTable td:nth-child(9) {
+    text-align: center;
+}
+
+/* ✅ Վերջին տողից սահմանագիծը հեռացնել */
+.usersTable tr:last-child td {
+    border-bottom: none;
+}
+
+/* ✅ Hover էֆեկտ */
+.usersTable tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* ✅ User Avatar */
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ddd;
+}
+
+/* ✅ Actions և Status սյուների ճիշտ դասավորվածություն */
+.actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ✅ View Button (Using Primary Color) */
+.viewButton {
+    background-color: var(--primary-color) !important;
+    border: none;
+    color: white !important;
+    padding: 8px 12px;
+    border-radius: 4px;
+    min-width: 80px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.viewButton:hover {
+    background-color: var(--primary-hover) !important;
+}
+
+/* ✅ Delete Button */
+.deleteButton {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    min-width: 80px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.deleteButton:hover {
+    background-color: #c82333;
+}
+
+/* ✅ User Status */
+.active {
+    color: green;
+    font-weight: bold;
+}
+
+.inactive {
+    color: red;
+    font-weight: bold;
+}

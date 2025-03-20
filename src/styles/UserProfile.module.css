@@ -1,0 +1,162 @@
+.profileContainer {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.avatarSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary-color);
+  display: block;
+}
+
+.avatarControls {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.profileDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.infoGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.infoGroup label {
+  font-weight: bold;
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 3px;
+}
+
+.infoGroup span {
+  background: #f8f8f8;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+}
+
+.infoGroup input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border 0.3s ease-in-out;
+}
+
+.infoGroup input:focus {
+  border-color: var(--primary-color);
+}
+
+.passwordSection {
+  margin-top: 30px;
+  padding: 15px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.passwordSection h3 {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+/* ✅ "Save" և "Cancel" (Հիմնական տվյալների) մեկ տողի վրա */
+.buttonGroup {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+/* ✅ Բոլոր action button-ները ստանում են գլխավոր action գույնը */
+.profileContainer button {
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  padding: 8px 12px;
+  transition: background 0.3s ease-in-out;
+  background: var(--primary-color);
+  color: white;
+}
+
+.profileContainer button:hover {
+  background: var(--primary-hover);
+}
+
+/* ✅ Password դաշտերի ստիլավորում */
+.passwordGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.passwordGroup label {
+  font-weight: bold;
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 3px;
+}
+
+.passwordGroup input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+}
+
+.passwordGroup input:focus {
+  border-color: var(--primary-color);
+}
+
+/* ✅ Password-ի "Save" և "Cancel" կոճակները մեկ տողի վրա */
+.passwordButtonGroup {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  background-color: var(--cancel-color) !important;
+  color: white !important;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.cancelButton:hover {
+  background-color: var(--cancel-hover) !important;
+}

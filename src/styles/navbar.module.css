@@ -1,0 +1,52 @@
+/* src/styles/navbar.module.css */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: black;
+    color: white;
+    padding: 10px 20px;
+    position: fixed;
+    top: 0;
+    left: 250px;
+    width: calc(100% - 250px);
+    height: 60px;
+    z-index: 1000;
+    transition: left 0.3s ease, width 0.3s ease;
+  }
+  
+  .closed {
+    left: 60px;
+    width: calc(100% - 60px);
+  }
+  
+  .leftMenu {
+    display: flex;
+    align-items: center;
+  }
+  
+  .rightMenu {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .authMenu button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+  }
+  
+  .authMenu button:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .logo {
+    display: block;
+    cursor: pointer;
+  }  
