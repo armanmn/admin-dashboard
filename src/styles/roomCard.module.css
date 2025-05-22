@@ -1,0 +1,84 @@
+.card {
+    display: flex;
+    gap: 20px;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #eee;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  }
+  
+  .image {
+    width: 300px;
+    height: 200px;
+    object-fit: cover;
+  }
+  
+  .content {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .description {
+    margin: 10px 0;
+    color: #555;
+  }
+  
+  .meta {
+    display: flex;
+    gap: 15px;
+    font-size: 14px;
+    color: #777;
+  }
+  
+  .footer {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .priceInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: #333;
+  }
+  
+  .totalPrice {
+    font-size: 18px;
+    font-weight: 600;
+    color: #222;
+  }
+  
+  .perNight {
+    font-size: 14px;
+    color: #777;
+  }
+  
+  .bonusInfo {
+    font-size: 14px;
+    background-color: #fef6ec;
+    border: 1px dashed #f36323;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: #d35400;
+  }
+  
+  .bookBtn {
+    background-color: #f36323;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-block;
+    transition: background-color 0.2s ease;
+  }
+  
+  .bookBtn:hover {
+    background-color: #e3561e;
+  }  

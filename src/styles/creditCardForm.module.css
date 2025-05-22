@@ -1,0 +1,84 @@
+.container {
+    margin-top: 30px;
+    padding: 0;
+    background: transparent;
+  }
+  
+  .heading {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  
+  .field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .field label {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+  }
+  
+  .field input {
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  
+  .cardRow {
+    display: flex;
+    gap: 16px;
+  }
+  
+  .cardRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 15px;
+  }
+  
+  .cardRow .field {
+    flex: 1 1 30%;
+    min-width: 100px;
+  }  
+  
+  .checkboxContainer {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    gap: 10px;
+    font-size: 14px;
+    color: #555;
+  }
+
+  
+  
+  .confirmBtn {
+    margin-top: 20px;
+    padding: 12px 20px;
+    background-color: #f36323;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    width: fit-content;
+  }
+  
+  .confirmBtn:hover {
+    background-color: #d9531a;
+  }  

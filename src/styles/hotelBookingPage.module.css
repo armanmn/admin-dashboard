@@ -1,0 +1,25 @@
+.container {
+  padding: 24px;
+}
+
+.mainContent {
+  display: flex;
+  gap: 24px;
+}
+
+/* Left Sidebar */
+.sidebarWrapper {
+  width: 250px;
+  flex-shrink: 0;
+}
+
+/* Mobile view */
+@media (max-width: 768px) {
+  .mainContent {
+    flex-direction: column;
+  }
+
+  .sidebarWrapper {
+    width: 100%;
+  }
+}

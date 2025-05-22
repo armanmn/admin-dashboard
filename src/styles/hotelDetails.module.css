@@ -1,0 +1,42 @@
+.container {
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+  }
+  
+  .coverImage {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .location {
+    font-style: italic;
+    color: #777;
+  }
+  
+  .infoSection {
+    margin-top: 20px;
+  }
+  
+  .details {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0;
+  }
+  
+  .amenities ul {
+    padding-left: 20px;
+  }
+  
+  .bookBtn {
+    margin-top: 30px;
+    background: #f36323;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }  

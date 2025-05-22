@@ -1,0 +1,43 @@
+.container {
+    padding: 30px;
+  }
+  
+  .summary {
+    display: flex;
+    gap: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+  }
+  
+  .image {
+    width: 300px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+  
+  .actions {
+    display: flex;
+    gap: 15px;
+  }
+  
+  .confirmBtn {
+    background: #f36323;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  
+  .cancelBtn {
+    background: #eee;
+    color: #333;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+  }  

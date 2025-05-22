@@ -1,0 +1,53 @@
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .title {
+    font-size: 26px;
+    margin-bottom: 24px;
+  }
+  
+  .section {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  
+  .section h3 {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  .image {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  
+  .payBtn {
+    background-color: #f36323;
+    color: #fff;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  
+  .voucherBtn {
+    background-color: #4caf50;
+    color: #fff;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 10px;
+  }  

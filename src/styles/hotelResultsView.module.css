@@ -1,0 +1,53 @@
+.resultsContainer {
+  flex: 1;
+  padding: 20px;
+}
+
+.toggleButtons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.toggleButtons button {
+  padding: 8px 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.toggleButtons button:hover {
+  background-color: #f3f3f3;
+}
+
+.toggleButtons .active {
+  background-color: #f36323;
+  color: white;
+  border-color: #f36323;
+}
+
+.cardsWrapper {
+  display: grid;
+  gap: 20px;
+}
+
+.cardsWrapper.grid {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.cardsWrapper.list {
+  grid-template-columns: 1fr; /* ✅ մեկ սյունակի layout */
+}
+
+/* 📱 Responsive - mobile: sidebar վերծին, content full width */
+@media (max-width: 768px) {
+  .resultsContainer {
+    padding: 10px;
+  }
+
+  .cardsWrapper {
+    grid-template-columns: 1fr;
+  }
+}

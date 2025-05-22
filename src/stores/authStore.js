@@ -5,44 +5,6 @@ export const useAuthStore = create((set) => ({
   user: null,
   isAuthenticated: false,
 
-
-  // checkAuth: async () => {
-  //   if (typeof window !== "undefined" && window.location.pathname.startsWith("/reset-password")) {
-  //     console.log("🔹 Skipping auth check for reset-password page.");
-  //     return;
-  //   }
-  
-  //   try {
-  //     const response = await api.get("/auth/check");
-  //     set({ user: response.user, isAuthenticated: true });
-  //   } catch (error) {
-  //     console.error("🚨 Auth check failed:", error);
-  //     set({ user: null, isAuthenticated: false });
-  //   }
-  // },
-
-  // login: async (email, password) => {
-  //   try {
-  //     const response = await api.post("/auth/login", { email, password });
-
-  //     if (response.user) {
-  //       set({ user: response.user, isAuthenticated: true });
-  //       return true;
-  //     } else {
-  //       throw new Error("User data not found in response");
-  //     }
-  //   } catch (error) {
-  //     return false;
-  //   }
-  // },
-
-  // logout: async () => {
-  //   try {
-  //     await api.post("/auth/logout");
-  //     set({ user: null, isAuthenticated: false });
-  //   } catch (error) {}
-  // },
-
   checkAuth: async () => {
     try {
       const response = await api.get("/auth/check");

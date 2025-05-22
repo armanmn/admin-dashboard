@@ -1,0 +1,104 @@
+.sidebar {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  width: 250px;
+  font-family: inherit;
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+.section label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.section input[type="number"] {
+  width: 100%;
+  padding: 8px 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+}
+
+.amenitiesList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.amenityItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 25px;
+  cursor: pointer;
+}
+
+.checkbox {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #bbb;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;         /* ✅ Չի թույլ տալիս փոքրանալ */
+  margin: 0;              /* ✅ Խուսափում ենք default vertical alignment bug-ից */
+  display: inline-block;  /* ✅ Consistent box model */
+  vertical-align: middle; /* ✅ Հստակեցնում է */
+}
+
+.checkbox:checked {
+  background-color: #f36323;
+  border-color: #f36323;
+}
+
+.checkbox:checked::after {
+  content: "✔";
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.checkboxItem {
+  display: flex;
+  align-items: center; /* ✅ Սինխրոնիզացնում է vertical alignment */
+  gap: 10px;
+  font-size: 14px;
+  color: #444;
+  line-height: 1.4;
+}
+
+.checkboxItem label {
+  margin-top: 5px;
+}
+
+.applyBtn {
+  background: #f36323;
+  color: white;
+  padding: 10px;
+  border: none;
+  width: 100%;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  transition: background-color 0.2s ease;
+}
+
+.applyBtn:hover {
+  background-color: #e3561e;
+}

@@ -1,0 +1,35 @@
+.table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .table th,
+  .table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: middle;
+  }
+  
+  .actionsCell {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .actionBtn {
+    padding: 5px 10px;
+    font-size: 14px;
+    border-radius: 4px;
+    border: none;
+    color: white;
+    cursor: pointer;
+  }
+  
+  .approveBtn {
+    background-color: #10B981; /* Green */
+  }
+  
+  .suspendBtn {
+    background-color: #EF4444; /* Red */
+  }  

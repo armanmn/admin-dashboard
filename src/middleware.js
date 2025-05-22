@@ -22,23 +22,3 @@ export default function middleware(req) {
 
   return NextResponse.next();
 }
-
-// export default function middleware(req) {
-//   const url = req.nextUrl.pathname;
-//   const token = req.cookies.get("authToken");
-
-//   // ✅ Թույլատրում ենք welcome, login, register, և reset-password էջերը առանց authentication-ի
-//   if (url.startsWith("/welcome") || url.startsWith("/login") || url.startsWith("/register") || url.startsWith("/reset-password")) {
-//     return NextResponse.next();
-//   }
-
-//   // ✅ Եթե user-ը login չի, միայն protected էջերի դեպքում տանում ենք login
-//   if (!token) {
-//     return NextResponse.redirect(new URL("/welcome", req.url));
-//   }
-
-//   return NextResponse.next();
-// }
-
-
-
