@@ -10,7 +10,24 @@ import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
 const HotelBookingPage = () => {
   const [filters, setFilters] = useState({});
 
-  const setCriteria = useSearchCriteriaStore((state) => state.setCriteria);
+  const {
+    city,
+    checkInDate,
+    checkOutDate,
+    adults,
+    children,
+    rooms,
+    setCriteria,
+  } = useSearchCriteriaStore();
+
+  const searchCriteria = {
+    location: city,
+    checkInDate,
+    checkOutDate,
+    adults,
+    children,
+    rooms,
+  };
 
   // ✅ AI search → updates filters + city
   const handleAISearch = useCallback((searchData) => {
@@ -28,7 +45,7 @@ const HotelBookingPage = () => {
       children: searchData.children,
       rooms: searchData.rooms,
     });
-  }, []);
+  }, [setCriteria]);
 
   // ✅ Manual search bar → updates filters + city
   const handleSearchFromBar = useCallback((searchData) => {
@@ -46,13 +63,19 @@ const HotelBookingPage = () => {
       children: searchData.children,
       rooms: searchData.rooms,
     });
-  }, []);
+  }, [setCriteria]);
 
   return (
     <div className={styles.container}>
       <h2>Hotel Booking</h2>
+
       <AISmartSearch onSearch={handleAISearch} />
-      <HotelSearchBar initialValues={filters} onSearch={handleSearchFromBar} />
+
+      <HotelSearchBar
+        initialValues={searchCriteria}
+        onSearch={handleSearchFromBar}
+      />
+
       <div className={styles.mainContent}>
         <div className={styles.sidebarWrapper}>
           <HotelFiltersSidebar onFilterChange={setFilters} />

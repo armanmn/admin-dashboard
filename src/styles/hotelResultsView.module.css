@@ -41,6 +41,35 @@
   grid-template-columns: 1fr; /* ✅ մեկ սյունակի layout */
 }
 
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sortContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sortContainer label {
+  font-weight: 500;
+}
+
+.sortSelect {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+
 /* 📱 Responsive - mobile: sidebar վերծին, content full width */
 @media (max-width: 768px) {
   .resultsContainer {

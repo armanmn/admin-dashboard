@@ -44,13 +44,10 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
   }, []);
 
   useEffect(() => {
-    console.log("🏙️ useEffect got location:", initialValues.location);
     if (initialValues.location) setLocation(initialValues.location);
-    if (initialValues.adults) setAdults(initialValues.adults);
-    if (initialValues.children !== undefined)
-      setChildren(initialValues.children);
-    if (initialValues.rooms) setRooms(initialValues.rooms);
-
+    if (initialValues.adults !== undefined) setAdults(initialValues.adults);
+    if (initialValues.children !== undefined) setChildren(initialValues.children);
+    if (initialValues.rooms !== undefined) setRooms(initialValues.rooms);
     if (initialValues.checkInDate && initialValues.checkOutDate) {
       setRange([
         {

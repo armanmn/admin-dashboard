@@ -6,6 +6,7 @@ import { differenceInDays } from "date-fns";
 export const useSearchCriteriaStore = create(
   persist(
     (set) => ({
+      // 🧭 Հիմնական փնտրման պարամետրեր
       city: "",
       checkInDate: null,
       checkOutDate: null,
@@ -14,6 +15,14 @@ export const useSearchCriteriaStore = create(
       rooms: 1,
       nights: 1,
 
+      // 🧰 Ֆիլտրերի բաժին
+      filters: {
+        priceRange: [0, 100000],
+        roomTypes: [], // օրինակ՝ ["suite", "standard"]
+        amenities: [], // օրինակ՝ ["wifi", "breakfast", "parking"]
+      },
+
+      // ✅ Փնտրման պարամետրերի setter
       setCriteria: ({ city, checkInDate, checkOutDate, adults, children, rooms }) => {
         const nights =
           checkInDate && checkOutDate
@@ -33,6 +42,13 @@ export const useSearchCriteriaStore = create(
         set({ city, checkInDate, checkOutDate, adults, children, rooms, nights });
       },
 
+      // ✅ Ֆիլտրերի setter
+      setFilters: (filters) => {
+        console.log("🎯 setFilters:", filters);
+        set({ filters });
+      },
+
+      // ✅ Մաքրել բոլոր պարամետրերը
       clearCriteria: () => {
         set({
           city: "",
@@ -42,6 +58,11 @@ export const useSearchCriteriaStore = create(
           children: 0,
           rooms: 1,
           nights: 1,
+          filters: {
+            priceRange: [0, 100000],
+            roomTypes: [],
+            amenities: [],
+          },
         });
       },
     }),

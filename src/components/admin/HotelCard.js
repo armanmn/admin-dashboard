@@ -1,9 +1,13 @@
 import React from "react";
 import Link from "next/link";
 import styles from "@/styles/hotelCard.module.css";
+import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
 
 const HotelCard = ({ hotel, viewType }) => {
+  const nights = useSearchCriteriaStore((state) => state.nights);
   const imageSrc = hotel.images?.[0] || "/placeholder.jpg";
+
+  const showPrice = typeof hotel.price === "number" && hotel.price > 0;
 
   return (
     <Link href={`/admin/bookings/hotel/${hotel._id}`} className={styles.link}>
@@ -24,7 +28,17 @@ const HotelCard = ({ hotel, viewType }) => {
 
           <div className={styles.details}>
             <span className={styles.rating}>⭐ {hotel.rating || 0}</span>
-            <span className={styles.price}>From ${hotel.price || "--"} / night</span>
+
+            {showPrice ? (
+              <span className={styles.price}>
+                From ${hotel.price} total
+                {nights > 1 ? ` for ${nights} nights` : ""}
+              </span>
+            ) : (
+              <span className={styles.priceUnavailable}>
+                No rooms available
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -39,4 +39,33 @@
     border: none;
     border-radius: 5px;
     cursor: pointer;
-  }  
+  }
+
+  .roomsHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+  
+  .sortContainer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .sortContainer label {
+    font-weight: 500;
+  }
+  
+  .sortSelect {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    background-color: #fff;
+    cursor: pointer;
+  }
+  
