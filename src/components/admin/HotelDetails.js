@@ -4,13 +4,27 @@ import styles from "@/styles/hotelDetails.module.css";
 import api from "@/utils/api";
 import HotelRoomFilters from "./HotelRoomFilters";
 import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
+import RoomCombinationCard from "@/components/admin/RoomCombinationCard";
+import { differenceInDays } from "date-fns";
 
 const HotelDetails = ({ hotel }) => {
   const [rooms, setRooms] = useState([]);
-  const [sortRoomsBy, setSortRoomsBy] = useState("price-asc"); // ✅ default
+  const [sortRoomsBy, setSortRoomsBy] = useState("price-asc");
 
-  const { adults, children, filters } = useSearchCriteriaStore();
+  const {
+    adults,
+    children,
+    rooms: numberOfRooms = 1,
+    filters,
+  } = useSearchCriteriaStore();
   const totalGuests = adults + children;
+  const numberOfRoomsFromFilters = filters.rooms || numberOfRooms;
+
+  const { checkInDate, checkOutDate } = useSearchCriteriaStore();
+  const nightsCount = differenceInDays(
+    new Date(checkOutDate),
+    new Date(checkInDate)
+  );
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -26,6 +40,12 @@ const HotelDetails = ({ hotel }) => {
 
   if (!hotel) return <p>Hotel not found.</p>;
 
+  // 🔍 Debug info
+  console.log("🔍 adults:", adults);
+  console.log("🔍 children:", children);
+  console.log("🔍 totalGuests:", totalGuests);
+  console.log("🔍 numberOfRoomsFromFilters:", numberOfRoomsFromFilters);
+
   const min = parseInt(filters.minPrice) || 0;
   const max = parseInt(filters.maxPrice) || Infinity;
 
@@ -37,15 +57,16 @@ const HotelDetails = ({ hotel }) => {
     .filter(([_, checked]) => checked)
     .map(([type]) => type.toLowerCase());
 
-  const minBeds = Number(filters.minBeds || 0);
-
-  const matchesRefundable =
-  !filters.refundable || room.isRefundable === true;
-
+  const minBeds =
+    filters.minBeds === "any" || !filters.minBeds
+      ? null
+      : parseInt(filters.minBeds, 10);
   const selectedMealPlans = filters.mealPlans || [];
+  const refundableOnly = filters.refundable || false;
 
-  const filteredRooms = rooms.filter((room) => {
-    const matchesOccupancy = room.maxOccupancy >= totalGuests;
+  const prelimFilteredRooms = rooms.filter((room) => {
+    const roomBeds = room.beds ?? room.maxOccupancy;
+    const matchesBeds = minBeds === null || Number(roomBeds || 0) >= minBeds;
     const matchesPrice = room.price >= min && room.price <= max;
     const hasAllAmenities = selectedAmenities.every((a) =>
       room.amenities?.includes(a)
@@ -53,23 +74,64 @@ const HotelDetails = ({ hotel }) => {
     const matchesType =
       selectedTypes.length === 0 ||
       selectedTypes.includes(room.type?.toLowerCase());
-    const matchesBeds = !minBeds || Number(room.beds || 0) >= minBeds;
-
+    const matchesRefundable = !refundableOnly || room.isRefundable === true;
     const matchesMealPlan =
       selectedMealPlans.length === 0 ||
-      selectedMealPlans.includes(room.mealPlan); // ✅ համեմատում ենք ըստ տվյալ դաշտի
+      selectedMealPlans.includes(room.mealPlan);
 
     return (
-      matchesOccupancy &&
       matchesPrice &&
       hasAllAmenities &&
       matchesType &&
       matchesBeds &&
-      matchesMealPlan // ✅ նոր պայման
+      matchesRefundable &&
+      matchesMealPlan
     );
   });
 
-  // ✅ Սորտավորում ըստ ընտրության
+  console.log("🔍 prelimFilteredRooms:", prelimFilteredRooms);
+
+  function generateCombinations(arr, k) {
+    const results = [];
+
+    const helper = (start, combo) => {
+      if (combo.length === k) {
+        results.push([...combo]);
+        return;
+      }
+
+      for (let i = start; i < arr.length; i++) {
+        combo.push(arr[i]);
+        helper(i + 1, combo);
+        combo.pop();
+      }
+    };
+
+    helper(0, []);
+    return results;
+  }
+
+  const validCombinations = generateCombinations(
+    prelimFilteredRooms,
+    numberOfRoomsFromFilters
+  ).filter(
+    (combo) =>
+      combo.reduce((sum, room) => sum + room.maxOccupancy, 0) >= totalGuests
+  );
+
+  console.log("🔍 validCombinations:", validCombinations);
+
+  const validRoomIds = new Set(
+    validCombinations.flat().map((room) => room._id)
+  );
+  console.log("🔍 validRoomIds:", [...validRoomIds]);
+
+  const filteredRooms = prelimFilteredRooms.filter((room) =>
+    validRoomIds.has(room._id)
+  );
+
+  console.log("🔍 final filteredRooms:", filteredRooms);
+
   const sortedRooms = [...filteredRooms].sort((a, b) => {
     switch (sortRoomsBy) {
       case "price-asc":
@@ -106,12 +168,11 @@ const HotelDetails = ({ hotel }) => {
         </div>
       </div>
 
-      {/* ✅ Սենյակների սորտավորում + ցուցադրում */}
       <div style={{ marginTop: "40px" }}>
-      <HotelRoomFilters />
+        <HotelRoomFilters />
         <div className={styles.roomsHeader}>
           <h3>
-            Available Rooms for {totalGuests} guest
+            Available Room Combinations for {totalGuests} guest
             {totalGuests > 1 ? "s" : ""}
           </h3>
 
@@ -128,12 +189,35 @@ const HotelDetails = ({ hotel }) => {
           </div>
         </div>
 
-        {sortedRooms.length > 0 ? (
-          sortedRooms.map((room) => (
-            <RoomCard key={room._id} room={room} hotelId={hotel._id} />
-          ))
+        {validCombinations.length > 0 ? (
+          validCombinations.map((combo, index) => {
+            const enrichedCombo = combo.map((room) => ({
+              ...room,
+              totalPrice: room.price * nightsCount,
+            }));
+
+            // Եթե միայն 1 սենյակ է, ցույց տուր RoomCard
+            if (enrichedCombo.length === 1) {
+              return (
+                <RoomCard
+                  key={enrichedCombo[0]._id}
+                  room={enrichedCombo[0]}
+                  hotelId={hotel._id}
+                />
+              );
+            }
+
+            // Եթե 2 կամ ավելի սենյակ է → Combination
+            return (
+              <RoomCombinationCard
+                key={index}
+                combination={enrichedCombo}
+                hotelId={hotel._id}
+              />
+            );
+          })
         ) : (
-          <p>No rooms available matching your criteria.</p>
+          <p>No room combinations available for your criteria.</p>
         )}
       </div>
     </div>

@@ -10,7 +10,7 @@ const HotelResultsView = ({ filters }) => {
   const [viewType, setViewType] = useState("grid");
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState("price-asc"); // ✅ default sort
+  const [sortBy, setSortBy] = useState("price-asc");
 
   const nights = useSearchCriteriaStore((state) => state.nights);
 
@@ -61,48 +61,39 @@ const HotelResultsView = ({ filters }) => {
       const priceMatch =
         (!filters?.minPrice || hotel.price >= Number(filters.minPrice)) &&
         (!filters?.maxPrice || hotel.price <= Number(filters.maxPrice));
-  
+
       const amenitiesMatch = filters?.amenities
         ? Object.entries(filters.amenities).every(
             ([key, value]) => !value || hotel.amenities?.includes(key)
           )
         : true;
-  
+
       const selectedTypes = filters?.roomTypes
         ? Object.entries(filters.roomTypes)
             .filter(([_, checked]) => checked)
             .map(([type]) => type.toLowerCase())
         : [];
-  
+
       const typeMatch =
         selectedTypes.length === 0 ||
         hotel.rooms?.some((room) =>
           selectedTypes.includes(room.type?.toLowerCase())
         );
-  
+
       const minBeds = Number(filters?.minBeds || 0);
-  
+
       const bedsMatch =
         !minBeds ||
-        hotel.rooms?.some((room) => Number(room.beds || 0) >= minBeds);
-  
-      const refundableMatch =
-        !filters?.refundable ||
-        hotel.rooms?.some((room) => room.isRefundable === true);
-  
-      return (
-        priceMatch &&
-        amenitiesMatch &&
-        typeMatch &&
-        bedsMatch &&
-        refundableMatch
-      );
+        hotel.rooms?.some((room) =>
+          Number(room.beds ?? room.maxOccupancy) >= minBeds
+        );
+
+      return priceMatch && amenitiesMatch && typeMatch && bedsMatch;
     });
-  };  
+  };
 
   const filteredHotels = applyFilters(hotels);
 
-  // ✅ Sort hotels after filtering
   const sortedHotels = [...filteredHotels].sort((a, b) => {
     switch (sortBy) {
       case "price-asc":

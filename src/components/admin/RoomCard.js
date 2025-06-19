@@ -1,4 +1,8 @@
-import React from "react";
+// RoomCard.js (New 4-column layout)
+
+import React, { useState } from "react";
+import RoomImageModal from "@/components/admin/RoomImageModal";
+
 import Link from "next/link";
 import styles from "@/styles/roomCard.module.css";
 
@@ -7,9 +11,16 @@ import { useAuthStore } from "@/stores/authStore";
 import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
 
 const RoomCard = ({ room, hotelId }) => {
+  const [isModalOpen, setModalOpen] = useState(false);
   const user = useAuthStore((state) => state.user);
   const checkInDate = useSearchCriteriaStore((state) => state.checkInDate);
   const checkOutDate = useSearchCriteriaStore((state) => state.checkOutDate);
+
+  const handleImageClick = () => {
+    if (room.images && room.images.length > 0) {
+      setModalOpen(true);
+    }
+  };
 
   const nights = Math.max(
     (new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24),
@@ -19,63 +30,60 @@ const RoomCard = ({ room, hotelId }) => {
   const totalPrice = room.price * nights;
   const bonus = calculateBonus(totalPrice, user);
 
-  console.log("✅ From Zustand:", { checkInDate, checkOutDate });
-
-  console.log("💰 Bonus debug:", {
-    location,
-    checkInDate,
-    checkOutDate,
-    nights,
-    roomPrice: room.price,
-    totalPrice,
-    user,
-    loyaltyRate: user.loyaltyRate,
-    bonus,
-  });
-
   return (
-    <div className={styles.card}>
-      <img
-        src={room.image || "/images/placeholder-room.jpg"}
-        alt={room.type || "Room"}
-        className={styles.image}
+    <div className={styles.cardWrapper}>
+      {/* Column 1: Image and Basic Info */}
+      <div className={styles.imageSection} onClick={handleImageClick}>
+        <img
+          src={room.image || "/images/placeholder-room.jpg"}
+          alt={room.type || "Room"}
+          className={styles.image}
+        />
+        <p className={styles.roomType}>{room.type || "Unnamed Room"}</p>
+        <p className={styles.roomSize}>{room.size || "Unknown size"}</p>
+      </div>
+
+      <RoomImageModal
+        images={room.images || [room.image || "/images/placeholder-room.jpg"]}
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
       />
-      <div className={styles.content}>
-        <h3>{room.type || "Unnamed Room"}</h3>
-        <p className={styles.description}>
-          {room.description || "No description available."}
+
+      {/* Column 2: Facilities */}
+      <div className={styles.facilitiesSection}>
+        {room.mealPlan && <p>🍽️ {room.mealPlan}</p>}
+        {room.isRefundable ? (
+          <p className={styles.refundable}>✅ Refundable</p>
+        ) : (
+          <p className={styles.nonRefundable}>❌ Non-refundable</p>
+        )}
+        <p>{room.amenities?.includes("wifi") && "📶 Free Wi-Fi"}</p>
+        <p>
+          {room.amenities?.includes("air_conditioning") &&
+            "❄️ Air Conditioning"}
         </p>
-        <div className={styles.meta}>
-          <span>
-            {room.maxOccupancy ? `${room.maxOccupancy} guests` : "No info"}
-          </span>
-          <span>{room.beds ? `${room.beds} beds` : "No info"}</span>
-          <span>
-            {room.bathrooms ? `${room.bathrooms} bathrooms` : "No info"}
-          </span>
-          <span>{room.size || "No size info"}</span>
-        </div>
-        <div className={styles.footer}>
-          <div className={styles.priceInfo}>
-            <span className={styles.totalPrice}>{totalPrice} ֏ ընդհանուր</span>
-            <span className={styles.perNight}>
-              ({room.price} ֏ / գիշեր × {nights} գիշեր)
-            </span>
-          </div>
+      </div>
 
-          {bonus > 0 && (
-            <div className={styles.bonusInfo}>
-              🎁 Earn <strong>{bonus}֏</strong> loyalty bonus
-            </div>
-          )}
+      {/* Column 3: Occupancy */}
+      <div className={styles.occupancySection}>
+        <p>🛏️ {room.beds || "-"} beds</p>
+        <p>👥 Max {room.maxOccupancy} guests</p>
+        <p>🚸 Children allowed</p>
+      </div>
 
-          <Link
-            href={`/admin/bookings/hotel/confirm?hotelId=${hotelId}&roomId=${room._id}`}
-            className={styles.bookBtn}
-          >
-            Book This Room
-          </Link>
-        </div>
+      {/* Column 4: Pricing and Actions */}
+      <div className={styles.priceSection}>
+        <p className={styles.totalPrice}>{totalPrice} ֏ total</p>
+        <p className={styles.perNight}>
+          ({room.price} ֏ / night × {nights})
+        </p>
+        {bonus > 0 && <p className={styles.bonus}>🎁 Earn {bonus} ֏ bonus</p>}
+        <Link
+          href={`/admin/bookings/hotel/confirm?hotelId=${hotelId}&roomId=${room._id}`}
+          className={styles.bookBtn}
+        >
+          Book This Room
+        </Link>
       </div>
     </div>
   );

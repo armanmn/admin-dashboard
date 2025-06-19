@@ -14,6 +14,8 @@ const Sidebar = () => {
   const [isHotelsOpen, setIsHotelsOpen] = useState(false);
   const toggleHotelsDropdown = () => setIsHotelsOpen(!isHotelsOpen);
   const [isBookingsOpen, setIsBookingsOpen] = useState(false);
+  const [isRoomsOpen, setIsRoomsOpen] = useState(false);
+
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -81,8 +83,24 @@ const Sidebar = () => {
             </li>
           </ul>
         </li>
-        <li>
-          <Link href="/rooms">Rooms</Link>
+        {/* ✅ Rooms Dropdown */}
+        <li className={styles.hasDropdown}>
+          <span
+            className={styles.dropdownToggle}
+            onClick={() => setIsRoomsOpen((prev) => !prev)}
+          >
+            Rooms {isRoomsOpen ? "▲" : "▼"}
+          </span>
+          <ul
+            className={`${styles.dropdown} ${isRoomsOpen ? styles.open : ""}`}
+          >
+            <li>
+              <Link href="/admin/rooms">All Rooms</Link>
+            </li>
+            <li>
+              <Link href="/admin/rooms/add">Add Room</Link>
+            </li>
+          </ul>
         </li>
 
         {/* ✅ Users Dropdown */}

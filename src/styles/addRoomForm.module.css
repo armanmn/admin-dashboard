@@ -1,0 +1,82 @@
+.form {
+  max-width: 600px;
+  margin: 0 auto;
+  background-color: #fdfdfd;
+  padding: 30px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.form h2 {
+  margin-bottom: 24px;
+  font-size: 1.5rem;
+  text-align: center;
+  color: #333;
+}
+
+.form label {
+  display: block;
+  margin-bottom: 6px;
+  margin-top: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form input,
+.form select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background-color: #fff;
+  transition: border 0.2s ease;
+}
+
+.form input:focus,
+.form select:focus {
+  border-color: #f36323;
+  outline: none;
+}
+
+.amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.amenities label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  background-color: #f4f4f4;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.amenities label:hover {
+  background-color: #eaeaea;
+}
+
+.submitButton {
+  width: 100%;
+  margin-top: 24px;
+  background-color: #f36323;
+  color: white;
+  border: none;
+  padding: 12px 0;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.submitButton:hover {
+  background-color: #d85114;
+}

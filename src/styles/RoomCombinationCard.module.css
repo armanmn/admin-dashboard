@@ -1,0 +1,29 @@
+.card {
+  border: 1px solid #ddd;
+  padding: 16px;
+  margin-bottom: 24px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.roomList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.summary {
+  margin-top: 16px;
+  text-align: right;
+}
+
+.bookButton {
+  background-color: #f36323;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  display: inline-block;
+  margin-top: 8px;
+}
