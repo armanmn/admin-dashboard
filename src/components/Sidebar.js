@@ -16,7 +16,6 @@ const Sidebar = () => {
   const [isBookingsOpen, setIsBookingsOpen] = useState(false);
   const [isRoomsOpen, setIsRoomsOpen] = useState(false);
 
-
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -150,9 +149,11 @@ const Sidebar = () => {
         <li>
           <Link href="/finance">Finance</Link>
         </li>
+        {loggedInUser && (loggedInUser.role === "admin" || loggedInUser.role === "finance_user") && (
         <li>
-          <Link href="/settings">Settings</Link>
+          <Link href="/admin/settings">Global Settings</Link>
         </li>
+        )}
       </ul>
 
       {/* ✅ Add User մոդալը */}

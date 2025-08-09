@@ -1,3 +1,4 @@
+// export default HotelFiltersSidebar;
 "use client";
 import React, { useState } from "react";
 import styles from "@/styles/hotelFiltersSidebar.module.css";
@@ -25,7 +26,7 @@ const HotelFiltersSidebar = ({ onFilterChange }) => {
     family: false,
   });
 
-  const [minBeds, setMinBeds] = useState(null); // ✅ With null for reset
+  const [minBeds, setMinBeds] = useState(null);
 
   const handleCheckboxChange = (e, setState) => {
     const { name, checked } = e.target;
@@ -33,14 +34,28 @@ const HotelFiltersSidebar = ({ onFilterChange }) => {
   };
 
   const applyFilters = () => {
-    onFilterChange({
-      minPrice,
-      maxPrice,
-      amenities,
-      roomTypes,
-      minBeds,
-      refundable,
-    });
+    const selectedAmenities = Object.entries(amenities)
+      .filter(([_, isChecked]) => isChecked)
+      .map(([key]) => key);
+
+    const selectedRoomTypes = Object.entries(roomTypes)
+      .filter(([_, isChecked]) => isChecked)
+      .map(([key]) => key);
+
+    const filterPayload = {};
+
+    // ⭐ KEY FIX: priceMin/priceMax → minPrice/maxPrice
+    if (minPrice !== "") filterPayload.minPrice = Number(minPrice);
+    if (maxPrice !== "") filterPayload.maxPrice = Number(maxPrice);
+
+    if (refundable) filterPayload.refundable = true;
+    if (selectedAmenities.length > 0)
+      filterPayload.facilities = selectedAmenities.join(",");
+    if (selectedRoomTypes.length > 0)
+      filterPayload.roomTypes = selectedRoomTypes.join(",");
+    if (minBeds !== null) filterPayload.minBeds = minBeds;
+
+    onFilterChange(filterPayload);
   };
 
   const amenityLabels = {
@@ -124,7 +139,7 @@ const HotelFiltersSidebar = ({ onFilterChange }) => {
         </div>
       </div>
 
-      {/* refundable */}
+      {/* Refundable */}
       <div className={styles.section}>
         <label>Refund Policy:</label>
         <div className={styles.amenitiesGrid}>
@@ -140,7 +155,7 @@ const HotelFiltersSidebar = ({ onFilterChange }) => {
         </div>
       </div>
 
-      {/* Beds Count */}
+      {/* Min Beds */}
       <div className={styles.section}>
         <label>Min Beds:</label>
         <div className={styles.amenitiesGrid}>

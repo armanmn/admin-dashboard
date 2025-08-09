@@ -1,0 +1,14 @@
+[
+  { "CityId": "563", "CityName": "Dubai", "Country": "United Arab Emirates" },
+  { "CityId": "298", "CityName": "Yerevan", "Country": "Armenia" },
+  { "CityId": "489", "CityName": "Tbilisi", "Country": "Georgia" },
+  { "CityId": "43", "CityName": "Vienna", "Country": "Austria" },
+  { "CityId": "74", "CityName": "Paris", "Country": "France" },
+  { "CityId": "41", "CityName": "Barcelona", "Country": "Spain" },
+  { "CityId": "171", "CityName": "Istanbul", "Country": "Turkey" },
+  { "CityId": "294", "CityName": "Moscow", "Country": "Russia" },
+  { "CityId": "80", "CityName": "Rome", "Country": "Italy" },
+  { "CityId": "90", "CityName": "London", "Country": "United Kingdom" },
+  { "CityId": "393", "CityName": "Athens", "Country": "Greece" },
+  { "CityId": "464", "CityName": "Batumi", "Country": "Georgia" }
+]

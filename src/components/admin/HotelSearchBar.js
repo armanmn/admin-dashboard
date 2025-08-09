@@ -5,12 +5,17 @@ import { DateRange } from "react-date-range";
 import { format } from "date-fns";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
+// import goglCities from "@/data/gogl_cities.json";
+import goglCities from "../../data/gogl_cities.json";
 
 const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
   const [location, setLocation] = useState(initialValues.location || "");
   const [adults, setAdults] = useState(initialValues.adults || 2);
   const [children, setChildren] = useState(initialValues.children || 0);
   const [rooms, setRooms] = useState(initialValues.rooms || 1);
+  const [selectedCityCode, setSelectedCityCode] = useState(null);
+  const [citySuggestions, setCitySuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [showGuestOptions, setShowGuestOptions] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -46,7 +51,8 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
   useEffect(() => {
     if (initialValues.location) setLocation(initialValues.location);
     if (initialValues.adults !== undefined) setAdults(initialValues.adults);
-    if (initialValues.children !== undefined) setChildren(initialValues.children);
+    if (initialValues.children !== undefined)
+      setChildren(initialValues.children);
     if (initialValues.rooms !== undefined) setRooms(initialValues.rooms);
     if (initialValues.checkInDate && initialValues.checkOutDate) {
       setRange([
@@ -59,9 +65,28 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
     }
   }, [initialValues]);
 
+  const handleLocationInput = (e) => {
+    const value = e.target.value;
+    setLocation(value);
+
+    if (value.length > 1) {
+      const filtered = goglCities.filter(
+        (city) =>
+          typeof city.CityName === "string" &&
+          city.CityName.toLowerCase().includes(value.toLowerCase())
+      );
+      setCitySuggestions(filtered.slice(0, 5));
+      setShowSuggestions(true);
+    } else {
+      setCitySuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
   const handleSearch = () => {
     const searchData = {
       location,
+      cityCode: selectedCityCode,
       checkInDate: format(range[0].startDate, "yyyy-MM-dd"),
       checkOutDate: format(range[0].endDate, "yyyy-MM-dd"),
       adults,
@@ -79,9 +104,27 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
           type="text"
           placeholder="Enter a destination"
           value={location}
-          onChange={(e) => setLocation(e.target.value)}
+          onChange={handleLocationInput}
           className={styles.input}
         />
+        {showSuggestions && citySuggestions.length > 0 && (
+          <ul className={styles.suggestionList}>
+            {citySuggestions.map((suggestion) => (
+              <li
+                key={suggestion.CityId}
+                className={styles.suggestionItem}
+                onClick={() => {
+                  setLocation(suggestion.CityName);
+                  setSelectedCityCode(suggestion.CityId);
+                  setShowSuggestions(false);
+                  setCitySuggestions([]);
+                }}
+              >
+                {suggestion.CityName} ({suggestion.Country})
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className={styles.inputGroup}>

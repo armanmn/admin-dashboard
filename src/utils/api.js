@@ -27,23 +27,6 @@ const api = {
     return await response.json();
   },
 
-   // get: async (endpoint) => {
-  //   console.log(`Fetching: ${API_URL}${endpoint}`); // ✅ Debugging log
-  //   const response = await fetch(`${API_URL}${endpoint}`, {
-  //     method: "GET",
-  //     credentials: "include",
-  //   });
-
-  //   // console.log(`Response Status: ${response.status}`); // ✅ Debugging log
-
-  //   if (!response.ok) {
-  //     // console.error(`API request failed: ${response.status}`, await response.text());
-  //     throw new Error(`API request failed: ${response.status}`);
-  //   }
-
-  //   return await response.json();
-  // },
-
   post: async (endpoint, data) => {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: "POST",

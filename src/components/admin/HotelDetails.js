@@ -4,6 +4,7 @@ import styles from "@/styles/hotelDetails.module.css";
 import api from "@/utils/api";
 import HotelRoomFilters from "./HotelRoomFilters";
 import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
+import { useCurrencyStore } from "@/stores/currencyStore";
 import RoomCombinationCard from "@/components/admin/RoomCombinationCard";
 import { differenceInDays } from "date-fns";
 
@@ -17,6 +18,7 @@ const HotelDetails = ({ hotel }) => {
     rooms: numberOfRooms = 1,
     filters,
   } = useSearchCriteriaStore();
+  const { currency } = useCurrencyStore();
   const totalGuests = adults + children;
   const numberOfRoomsFromFilters = filters.rooms || numberOfRooms;
 
@@ -27,16 +29,24 @@ const HotelDetails = ({ hotel }) => {
   );
 
   useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const res = await api.get(`/rooms/hotel/${hotel._id}`);
-        setRooms(res);
-      } catch (err) {
-        console.error("❌ Failed to fetch rooms:", err);
-      }
-    };
-    if (hotel?._id) fetchRooms();
-  }, [hotel]);
+  const fetchRooms = async () => {
+    try {
+      const res = await api.get(`/rooms/hotel/${hotel._id}`, {
+        params: {
+          currency,
+          adults,
+          children,
+          nights: nightsCount,
+        },
+      });
+      setRooms(res);
+    } catch (err) {
+      console.error("❌ Failed to fetch rooms:", err);
+    }
+  };
+
+  if (hotel?._id) fetchRooms();
+}, [hotel, currency, adults, children, nightsCount]);
 
   if (!hotel) return <p>Hotel not found.</p>;
 

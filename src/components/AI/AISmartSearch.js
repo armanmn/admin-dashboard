@@ -4,11 +4,15 @@
 import React, { useState, useEffect } from "react";
 import styles from "@/styles/aiSmartSearch.module.css";
 import api from "@/utils/api";
+import { useCurrencyStore } from "@/stores/currencyStore";
+
 
 const AISmartSearch = ({ onSearch }) => {
   const [query, setQuery] = useState("");
   const [parsed, setParsed] = useState(null);
   const [cities, setCities] = useState([]);
+  const { currency } = useCurrencyStore();
+
 
   useEffect(() => {
     const fetchCities = async () => {
@@ -60,6 +64,7 @@ const AISmartSearch = ({ onSearch }) => {
       adults: null,
       children: null,
       rooms: 1, // default to 1
+      currency,
     };
 
     const lower = query.toLowerCase();

@@ -69,6 +69,25 @@
   cursor: pointer;
 }
 
+.loadMoreWrapper {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.loadMoreButton {
+  background: #f36323;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.loadMoreButton:hover {
+  background: #d6521f;
+}
 
 /* 📱 Responsive - mobile: sidebar վերծին, content full width */
 @media (max-width: 768px) {

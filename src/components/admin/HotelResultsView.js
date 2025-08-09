@@ -1,115 +1,178 @@
 "use client";
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "@/utils/api";
 import HotelCard from "./HotelCard";
 import styles from "@/styles/hotelResultsView.module.css";
+import { useCurrencyStore } from "@/stores/currencyStore";
 import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
+import usePublicSettings from "@/hooks/usePublicSettings";
+import { calculatePrice } from "@/utils/priceUtils";
 
-const HotelResultsView = ({ filters }) => {
+const CHUNK = 20;
+
+const HotelResultsView = ({ searchParams, uiFilters }) => {
+  const [allHotels, setAllHotels] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(CHUNK);
+  const [loading, setLoading] = useState(false);
   const [viewType, setViewType] = useState("grid");
-  const [hotels, setHotels] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState("price-asc");
+  const [sortBy, setSortBy] = useState("price_asc");
 
-  const nights = useSearchCriteriaStore((state) => state.nights);
+  // 🧭 same currency the user selected in Navbar
+  const { currency } = useCurrencyStore();
 
+  // 🧮 EXACT SAME inputs HotelCard uses
+  const nights = useSearchCriteriaStore((s) => s.nights) || 1;
+  const publicSettings = usePublicSettings(); // has exchangeRates + markup
+
+  const DEBUG = false;
+
+  // FETCH — only on searchParams / currency / sortBy
   useEffect(() => {
-    const fetchHotels = async () => {
+    const doFetch = async () => {
+      if (
+        !searchParams?.city ||
+        !searchParams?.checkInDate ||
+        !searchParams?.checkOutDate
+      ) {
+        setAllHotels([]);
+        setVisibleCount(CHUNK);
+        return;
+      }
+
       try {
         setLoading(true);
 
-        const query = {};
-        if (filters?.city) query.city = filters.city;
-        if (filters?.checkInDate) query.checkIn = filters.checkInDate;
-        if (filters?.checkOutDate) query.checkOut = filters.checkOutDate;
-        if (filters?.adults) query.adults = filters.adults;
-        if (filters?.children) query.children = filters.children;
-        if (filters?.rooms) query.rooms = filters.rooms;
+        const params = {
+          ...searchParams,
+          page: 1,
+          limit: 3000,
+          sort: sortBy,
+        };
+        if (currency) params.currency = currency;
 
-        const res = await api.get("/hotels", { params: query });
+        const res = await api.get("/hotels", { params });
+        const hotelsArray = Array.isArray(res) ? res : res.hotels || [];
 
-        const hotelsWithPrices = res
+        const processed = hotelsArray
           .map((hotel) => {
-            const roomPrices = hotel.rooms
-              ?.map((r) => Number(r.price))
-              .filter(Boolean);
-            const minRoomPrice = roomPrices?.length
-              ? Math.min(...roomPrices)
-              : null;
-
+            const m = hotel?.minPrice;
+            const amountNum = m && m.amount != null ? Number(m.amount) : null;
             return {
               ...hotel,
-              price: minRoomPrice && nights > 0 ? minRoomPrice * nights : null,
+              minPrice:
+                amountNum != null && !Number.isNaN(amountNum) && m?.currency
+                  ? { amount: amountNum, currency: m.currency }
+                  : null,
             };
           })
-          .filter((hotel) => hotel.price !== null);
+          .filter((h) => h.minPrice !== null);
 
-        setHotels(hotelsWithPrices);
-      } catch (error) {
-        console.error("❌ Failed to fetch hotels:", error);
+        setAllHotels(processed);
+        setVisibleCount(CHUNK);
+      } catch (err) {
+        console.error("❌ Failed to fetch hotels:", err);
+        setAllHotels([]);
+        setVisibleCount(CHUNK);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchHotels();
-  }, [filters, nights]);
+    doFetch();
+  }, [searchParams, currency, sortBy]);
 
-  const applyFilters = (hotels) => {
-    return hotels.filter((hotel) => {
-      const priceMatch =
-        (!filters?.minPrice || hotel.price >= Number(filters.minPrice)) &&
-        (!filters?.maxPrice || hotel.price <= Number(filters.maxPrice));
+  // ---------- Helpers ----------
+  const toNum = (v) =>
+    v === "" || v === null || v === undefined ? NaN : Number(v);
 
-      const amenitiesMatch = filters?.amenities
-        ? Object.entries(filters.amenities).every(
-            ([key, value]) => !value || hotel.amenities?.includes(key)
-          )
-        : true;
+  // 🔹 Derive EXACTLY the number the card shows: total with conversion + markup + nights
+  //    Then filter on that derived number.
+  const pricedHotels = useMemo(() => {
+    // If settings are not ready, just pass through without derived total
+    const rates = publicSettings?.exchangeRates || null;
+    const markup = Number(publicSettings?.markup || 0);
 
-      const selectedTypes = filters?.roomTypes
-        ? Object.entries(filters.roomTypes)
-            .filter(([_, checked]) => checked)
-            .map(([type]) => type.toLowerCase())
-        : [];
+    const list = allHotels.map((h) => {
+      const offerPrice = Number(h.minPrice?.amount ?? 0);
+      const offerCurrency = h.minPrice?.currency;
 
-      const typeMatch =
-        selectedTypes.length === 0 ||
-        hotel.rooms?.some((room) =>
-          selectedTypes.includes(room.type?.toLowerCase())
-        );
+      if (!offerPrice || !offerCurrency || !rates) {
+        return { ...h, _displayTotal: null };
+      }
 
-      const minBeds = Number(filters?.minBeds || 0);
+      const { total } = calculatePrice(
+        offerPrice,
+        offerCurrency,
+        currency || offerCurrency,
+        markup,
+        Number(nights) || 1,
+        rates
+      );
 
-      const bedsMatch =
-        !minBeds ||
-        hotel.rooms?.some((room) =>
-          Number(room.beds ?? room.maxOccupancy) >= minBeds
-        );
+      const displayTotal = total && !isNaN(total) ? Number(total) : null;
 
-      return priceMatch && amenitiesMatch && typeMatch && bedsMatch;
+      if (DEBUG && displayTotal === null) {
+        console.log("⚠️ calcPrice failed", {
+          name: h.name,
+          offerPrice,
+          offerCurrency,
+          targetCurrency: currency || offerCurrency,
+          markup,
+          nights,
+          rates,
+        });
+      }
+
+      return { ...h, _displayTotal: displayTotal };
     });
-  };
 
-  const filteredHotels = applyFilters(hotels);
-
-  const sortedHotels = [...filteredHotels].sort((a, b) => {
-    switch (sortBy) {
-      case "price-asc":
-        return (a.price || 0) - (b.price || 0);
-      case "price-desc":
-        return (b.price || 0) - (a.price || 0);
-      case "rating-desc":
-        return (b.rating || 0) - (a.rating || 0);
-      case "newest":
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      default:
-        return 0;
+    if (DEBUG) {
+      console.log("💱 Derived totals sample:");
+      console.table(
+        list.slice(0, 5).map((x) => ({
+          name: x.name,
+          offer: `${x?.minPrice?.amount} ${x?.minPrice?.currency}`,
+          to: currency,
+          total: x._displayTotal,
+        }))
+      );
     }
-  });
 
-  if (loading) return <p>Loading hotels...</p>;
+    return list;
+  }, [allHotels, currency, publicSettings, nights]);
+
+  // ---------- Local filtering (NO fetch) — on _displayTotal ----------
+  const locallyFiltered = useMemo(() => {
+    let result = pricedHotels.filter((h) => h._displayTotal != null);
+
+    const min = toNum(uiFilters?.minPrice);
+    const max = toNum(uiFilters?.maxPrice);
+    const applyBounds = !Number.isNaN(min) || !Number.isNaN(max);
+
+    if (applyBounds) {
+      result = result.filter((h) => {
+        const amt = Number(h._displayTotal);
+        if (!Number.isNaN(min) && amt < min) return false;
+        if (!Number.isNaN(max) && amt > max) return false;
+        return true;
+      });
+    }
+
+    // (Optional) facilities etc...
+    // if (uiFilters?.facilities) { ... }
+
+    return result;
+  }, [pricedHotels, uiFilters]);
+
+  // ---------- Local pagination ----------
+  const visibleHotels = useMemo(
+    () => locallyFiltered.slice(0, visibleCount),
+    [locallyFiltered, visibleCount]
+  );
+
+  const loadMore = () => setVisibleCount((prev) => prev + CHUNK);
+
+  if (loading && visibleHotels.length === 0) return <p>Loading hotels...</p>;
 
   return (
     <div className={styles.resultsContainer}>
@@ -136,23 +199,39 @@ const HotelResultsView = ({ filters }) => {
             onChange={(e) => setSortBy(e.target.value)}
             className={styles.sortSelect}
           >
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-            <option value="rating-desc">Rating: High to Low</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="rating_desc">Rating: High to Low</option>
             <option value="newest">Newest Listings</option>
           </select>
         </div>
       </div>
 
       <div className={`${styles.cardsWrapper} ${styles[viewType]}`}>
-        {sortedHotels.length > 0 ? (
-          sortedHotels.map((hotel) => (
-            <HotelCard key={hotel._id} hotel={hotel} viewType={viewType} />
+        {visibleHotels.length > 0 ? (
+          visibleHotels.map((hotel) => (
+            <HotelCard
+              key={hotel._id}
+              hotel={hotel}
+              viewType={viewType}
+              rating={hotel.rating}
+              thumbnail={hotel.thumbnail}
+            />
           ))
         ) : (
-          <p>No hotels match the selected filters.</p>
+          !loading && <p>No hotels match the selected filters.</p>
         )}
       </div>
+
+      {!loading && visibleHotels.length < locallyFiltered.length && (
+        <div className={styles.loadMoreWrapper}>
+          <button onClick={loadMore} className={styles.loadMoreButton}>
+            Load More
+          </button>
+        </div>
+      )}
+
+      {loading && visibleHotels.length > 0 && <p>Loading more hotels...</p>}
     </div>
   );
 };

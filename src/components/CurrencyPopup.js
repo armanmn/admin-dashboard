@@ -1,13 +1,13 @@
 "use client";
-import { useState } from "react";
 import { Dropdown } from "react-bootstrap";
 import styles from "../styles/popup.module.css";
+import { useCurrencyStore } from "../stores/currencyStore";
 
 const CurrencyPopup = () => {
-  const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const { selectedCurrency, setCurrency } = useCurrencyStore();
 
   const handleSelect = (currency) => {
-    setSelectedCurrency(currency);
+    setCurrency(currency);
   };
 
   return (

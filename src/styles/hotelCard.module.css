@@ -74,7 +74,6 @@
   color: #444;
   margin-bottom: 12px;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -89,6 +88,45 @@
 
 .price {
   color: #f36323;
+  position: relative;
+  cursor: default;
+}
+
+.price strong {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.price[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 130%;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 100;
+  opacity: 1;
+  pointer-events: none;
+}
+
+/* Անիմացիոն shimmer placeholder */
+.priceLoading {
+  display: inline-block;
+  width: 100px;
+  height: 1em;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 37%, #f0f0f0 63%);
+  background-size: 400% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -400% 0; }
+  100% { background-position: 400% 0; }
 }
 
 .link {
