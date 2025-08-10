@@ -104,7 +104,7 @@ const HotelResultsView = ({ searchParams, uiFilters }) => {
         offerPrice,
         offerCurrency,
         currency || offerCurrency,
-        markup,
+        0,
         Number(nights) || 1,
         rates
       );

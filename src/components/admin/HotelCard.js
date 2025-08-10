@@ -50,7 +50,7 @@ const HotelCard = ({ hotel, viewType }) => {
       Number(offerPrice),
       offerCurrency,
       displayCurrency,
-      markup,
+      0,
       Number(nights) || 1,
       rates
     );
