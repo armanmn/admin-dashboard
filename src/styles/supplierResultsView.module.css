@@ -1,0 +1,67 @@
+.container{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  flex:1;
+  min-width:0;
+}
+
+.topBar{display:flex;align-items:center;gap:10px}
+.viewTabs{display:inline-flex;gap:6px}
+.tab{padding:6px 10px;border-radius:8px;border:1px solid #e3e3e3;background:#fff;cursor:pointer}
+.tabActive{border-color:#333;background:#f3f3f3}
+
+.sortContainer{display:flex;align-items:center;gap:8px}
+.sortSelect{padding:6px 10px;border-radius:8px;border:1px solid #e3e3e3;background:#fff}
+
+/* ---------- GRID mode ---------- */
+
+.gridWrapper {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* tighter min width on medium screens */
+@media (max-width: 1200px){
+  .gridWrapper{
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+  }
+}
+
+/* phone: always single column */
+@media (max-width: 680px){
+  .gridWrapper{
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ---------- LIST mode ---------- */
+.listWrapper{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:10px;
+}
+
+/* load more */
+.loadMoreWrapper{display:flex;justify-content:center;margin:12px 0 20px}
+.loadMoreButton{padding:10px 16px;border-radius:10px;border:1px solid #e3e3e3;background:#fff;cursor:pointer}
+.loadMoreButton:hover{background:#f8f8f8}
+
+/* overlay/spinner (կարող ես թողնել ինչպես կար) */
+.resultsShell{ position:relative; min-height:180px; }
+.loadingOverlay{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,0.65); backdrop-filter:blur(2px);
+  z-index:2;
+}
+.spinner{ width:18px; height:18px; border:2px solid #bbb; border-top-color:transparent; border-radius:50%; margin-right:8px; animation:spin .9s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg) } }
+
+.dim{ filter:grayscale(.1); opacity:.6; pointer-events:none; }
+.firstLoad{ min-height:220px; display:flex; align-items:center; justify-content:center; color:#555; font-weight:600; gap:10px; }
+
+:global(.gridWrapper) .card { height: 100%; display: flex; flex-direction: column; }
+:global(.gridWrapper) .thumb { height: 170px; } /* grid-ում ֆիքսված preview */

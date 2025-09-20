@@ -23,3 +23,23 @@
     width: 100%;
   }
 }
+
+/* --- Unified section spacing --- */
+.sectionGap {
+  margin-bottom: 20px;      /* նույն հեռավորությունը բոլոր բլոկների միջև */
+}
+
+/* --- Search bar divider --- */
+.searchBarSection {
+  margin-bottom: 20px;      /* նույն հեռավորությունը ինչ sectionGap-ը */
+  padding-bottom: 12px;     /* divider-ից վերև մի քիչ օդ */
+  border-bottom: 1px solid color-mix(in srgb, var(--primary-color, #f36323) 12%, #e5e7eb);
+ /* նուրբ գիծ */
+}
+
+/* Optional: dark mode-ի համար divider-ը մի քիչ մեղմ */
+@media (prefers-color-scheme: dark) {
+  .searchBarSection {
+    border-bottom-color: rgba(255,255,255,.12);
+  }
+}

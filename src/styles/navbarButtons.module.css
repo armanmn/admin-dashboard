@@ -1,0 +1,16 @@
+/* Թե՛ Bootstrap-ի primary-ն չորացնելու, թե՛ hover/focus վիճակների համար */
+.toggle {
+  background: transparent !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 10px !important;
+  padding: 6px 10px !important;
+}
+
+.toggle:hover,
+.toggle:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}

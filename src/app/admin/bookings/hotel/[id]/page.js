@@ -1,74 +1,113 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import api from "@/utils/api";
-import HotelDetails from "@/components/admin/HotelDetails";
-import HotelSearchBar from "@/components/admin/HotelSearchBar";
+import React, { useEffect } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 
-import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
+import HotelDetailsView from "@/components/admin/hotel/HotelDetailsView";
+import { useHotelDetails } from "@/hooks/useHotelDetails";
+import { useSelectionStore } from "@/stores/selectionStore";
 
-const HotelDetailsPage = () => {
+export default function Page() {
   const { id } = useParams();
-  const [hotel, setHotel] = useState(null);
+  const q = useSearchParams();
+  const router = useRouter();
 
-  const {
-    city,
-    checkInDate,
-    checkOutDate,
-    adults,
-    children,
-    rooms,
-    setCriteria,
-  } = useSearchCriteriaStore();
+  // ---- query params ----
+  const arrivalDate = q.get("arrivalDate") || undefined;
+  const nights = Number(q.get("nights") || 1);
+  const rooms = Number(q.get("rooms") || 1);
+  const adults = Number(q.get("adults") || 2);
+  const children = Number(q.get("children") || 0);
+  const childrenAges = q.get("childrenAges") || ""; // e.g. "5,12" or "5,12|3"
+  const cityId = q.get("cityId") || undefined;
+  const filterBasis = q.get("filterBasis") || q.get("basis") || undefined; // e.g. "BB,HB"
+  const userCurrency = q.get("currency") || "USD";
+
+  const resetSelection = useSelectionStore((s) => s.reset); // selector-ով վերցնենք հենց ֆունկցիան
 
   useEffect(() => {
-    const fetchHotel = async () => {
-      try {
-        const res = await api.get(`/hotels/${id}`);
-        setHotel(res);
-      } catch (error) {
-        console.error("❌ Failed to fetch hotel:", error);
-      }
-    };
+    if (typeof resetSelection === "function") resetSelection();
+  }, [
+    resetSelection,
+    id,
+    arrivalDate,
+    nights,
+    rooms,
+    adults,
+    children,
+    childrenAges,
+  ]);
 
-    fetchHotel();
-  }, [id]);
+  // ---- data hook (single-hotel endpoint + parallel info) ----
+  const {
+    loading,
+    hotel,
+    offersPreview,
+    fullAddress,
+    areaLabel,
+    aboutText,
+    facilities,
+    distances,
+    heroPhotos,
+    totalPhotoCount,
+  } = useHotelDetails({
+    id,
+    arrivalDate,
+    nights,
+    rooms,
+    adults,
+    children,
+    childrenAges,
+    cityCode: cityId,
+    filterBasis,
+  });
 
-  if (!hotel) return <p>Loading hotel...</p>;
+  // fallback միայն URL-ից, եթե hook-ը դեռ չի բերել
+  const mergedHotel = hotel || {
+    _id: id,
+    name: q.get("name") || "",
+    stars: Number(q.get("stars") || 0),
+  };
+
+  const checkOutDate = arrivalDate
+    ? new Date(new Date(arrivalDate).getTime() + nights * 86400000)
+        .toISOString()
+        .slice(0, 10)
+    : "";
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ✅ Always top search bar */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-        <HotelSearchBar
-          initialValues={{
-            location: city || hotel?.location?.city || "",
-            checkInDate,
-            checkOutDate,
-            adults,
-            children,
-            rooms,
-          }}
-          onSearch={(searchData) => {
-            // ✅ Correctly map "location" → "city" for store
-            console.log("📨 HotelSearchBar returned:", searchData);
-            setCriteria({
-              city: searchData.location,
-              checkInDate: searchData.checkInDate,
-              checkOutDate: searchData.checkOutDate,
-              adults: searchData.adults,
-              children: searchData.children,
-              rooms: searchData.rooms,
-            });
-          }}
-        />
-      </div>
+    <div>
+      {loading && (
+        <div style={{ padding: 8, color: "#6b7280", fontStyle: "italic" }}>
+          Loading hotel…
+        </div>
+      )}
 
-      {/* ✅ Hotel details below search bar */}
-      <HotelDetails hotel={hotel} />
+      <HotelDetailsView
+        hotel={mergedHotel}
+        offers={offersPreview || []}
+        arrivalDate={arrivalDate}
+        checkOutDate={checkOutDate}
+        nights={nights}
+        adults={adults}
+        children={children}
+        rooms={rooms}
+        userCurrency={userCurrency}
+        role={null}
+        user={null}
+        exchangeRates={null}
+        settings={null}
+        onBack={() => router.back()}
+        onChangeSearch={() => {}}
+        onCheckAvailability={() => {}}
+        fullAddress={fullAddress}
+        areaLabel={areaLabel}
+        aboutText={aboutText}
+        facilities={facilities}
+        distances={distances}
+        heroPhotos={heroPhotos}
+        totalPhotoCount={totalPhotoCount}
+      />
     </div>
   );
-};
-
-export default HotelDetailsPage;
+}

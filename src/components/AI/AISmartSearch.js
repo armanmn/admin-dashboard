@@ -58,7 +58,7 @@ const AISmartSearch = ({ onSearch }) => {
 
   const handleSearch = () => {
     const result = {
-      destination: null,
+      location: null,
       checkInDate: null,
       checkOutDate: null,
       adults: null,
@@ -69,8 +69,10 @@ const AISmartSearch = ({ onSearch }) => {
 
     const lower = query.toLowerCase();
 
+    // const cityMatch = cities.find((city) => lower.includes(city.toLowerCase()));
+    // if (cityMatch) result.destination = cityMatch.toLowerCase();
     const cityMatch = cities.find((city) => lower.includes(city.toLowerCase()));
-    if (cityMatch) result.destination = cityMatch.toLowerCase();
+    if (cityMatch) result.location = cityMatch.toLowerCase();
 
     const cleanQuery = query.replace(/\u2013/g, "-").toLowerCase();
     const year = new Date().getFullYear();

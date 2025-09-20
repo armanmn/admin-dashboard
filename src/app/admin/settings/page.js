@@ -1,18 +1,43 @@
+// src/app/admin/settings/page.js
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import api from "@/utils/api";
 import styles from "@/styles/settings.module.css";
 
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    const abs = d.toLocaleString();
+    // փոքր “relative” հուշում
+    const diff = Date.now() - d.getTime();
+    const mins = Math.round(diff / 60000);
+    let rel =
+      mins < 60
+        ? `${mins}m ago`
+        : mins < 1440
+        ? `${Math.round(mins / 60)}h ago`
+        : `${Math.round(mins / 1440)}d ago`;
+    return `${abs} (${rel})`;
+  } catch {
+    return String(iso);
+  }
+}
+
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [settings, setSettings] = useState(null);
   const [editMarkup, setEditMarkup] = useState(false);
   const [ratesMode, setRatesMode] = useState("auto");
+
   const [form, setForm] = useState({
     b2cMarkupPercentage: "",
     officeMarkupPercentage: "",
     USD: "",
-    AMD: "",
+    EUR: "",
+    RUB: "",
+    GBP: "",
   });
 
   // 📥 Load initial settings from backend
@@ -20,15 +45,16 @@ export default function AdminSettingsPage() {
     (async () => {
       setLoading(true);
       try {
-        const d = await api.get("/global-settings");
+        const d = await api.get("/global-settings"); // returns full GlobalSettings doc
         setSettings(d);
-        setRatesMode("auto");
+        setRatesMode(d.exchangeMode || "auto");
         setForm({
-          b2cMarkupPercentage: d.b2cMarkupPercentage,
-          officeMarkupPercentage: d.officeMarkupPercentage,
-          USD: d.exchangeRates.USD,
-          EUR: d.exchangeRates.EUR,
-          RUB: d.exchangeRates.RUB,
+          b2cMarkupPercentage: d.b2cMarkupPercentage ?? "",
+          officeMarkupPercentage: d.officeMarkupPercentage ?? "",
+          USD: d.exchangeRates?.USD ?? "",
+          EUR: d.exchangeRates?.EUR ?? "",
+          RUB: d.exchangeRates?.RUB ?? "",
+          GBP: d.exchangeRates?.GBP ?? "",
         });
       } catch (err) {
         console.error("Failed to load settings", err);
@@ -46,31 +72,54 @@ export default function AdminSettingsPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const isValidMarkup = () =>
-    form.b2cMarkupPercentage !== "" &&
-    form.officeMarkupPercentage !== "";
+  const isValidMarkup = useMemo(
+    () =>
+      form.b2cMarkupPercentage !== "" &&
+      form.officeMarkupPercentage !== "",
+    [form.b2cMarkupPercentage, form.officeMarkupPercentage]
+  );
 
-  const isValidRates = () =>
-    ratesMode === "auto" || (form.USD !== "" && form.EUR !== "" && form.RUB);
+  const isValidRates = useMemo(() => {
+    if (ratesMode === "auto") return true;
+    // manual — all required
+    return (
+      form.USD !== "" &&
+      form.EUR !== "" &&
+      form.RUB !== "" &&
+      form.GBP !== ""
+    );
+  }, [ratesMode, form]);
 
   // 💾 Unified save handler
   const handleSaveAll = async () => {
-    if (!isValidMarkup() || !isValidRates()) {
+    if (!isValidMarkup || !isValidRates) {
       return alert("Խնդրում եմ լրացրեք բոլոր դաշտերը ճիշտ");
     }
     setLoading(true);
     try {
-      const payload = {
-        mode: ratesMode,
-        rates: ratesMode === "manual"
-          ? { USD: Number(form.USD), EUR: Number(form.EUR), RUB: Number(form.RUB) }
-          : {},
-        b2cMarkupPercentage: Number(form.b2cMarkupPercentage),
-        officeMarkupPercentage: Number(form.officeMarkupPercentage),
-      };
+      const payload =
+        ratesMode === "manual"
+          ? {
+              mode: "manual",
+              rates: {
+                USD: Number(form.USD),
+                EUR: Number(form.EUR),
+                RUB: Number(form.RUB),
+                GBP: Number(form.GBP),
+              },
+              b2cMarkupPercentage: Number(form.b2cMarkupPercentage),
+              officeMarkupPercentage: Number(form.officeMarkupPercentage),
+            }
+          : {
+              mode: "auto",
+              rates: {}, // ignored by BE
+              b2cMarkupPercentage: Number(form.b2cMarkupPercentage),
+              officeMarkupPercentage: Number(form.officeMarkupPercentage),
+            };
 
       const updated = await api.post("/global-settings", payload);
       setSettings(updated);
+      setRatesMode(updated.exchangeMode || "auto");
       setEditMarkup(false);
       alert("Պահպանվեց հաջողությամբ");
     } catch (err) {
@@ -81,7 +130,24 @@ export default function AdminSettingsPage() {
     }
   };
 
-  if (loading && !settings) return <div className={styles.container}>Loading…</div>;
+  // 🔄 “Refresh now” — միայն Auto ռեժիմում
+  const refreshNow = async () => {
+    setRefreshing(true);
+    try {
+      const updated = await api.post("/exchange/refresh", {});
+      setSettings(updated);
+      // form-ի ցուցադրական թվերը թարմացնելու կարիք չկա՝ դրանք read-only են auto ռեժիմում
+    } catch (err) {
+      console.error("Manual refresh failed", err);
+      alert("Չհաջողվեց թարմացնել CBA–ից։ Փորձեք մի քիչ հետո։");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (loading && !settings) {
+    return <div className={styles.container}>Loading…</div>;
+  }
 
   return (
     <div className={styles.container}>
@@ -93,7 +159,7 @@ export default function AdminSettingsPage() {
         {["b2cMarkupPercentage", "officeMarkupPercentage"].map((key) => (
           <div className={styles.formRow} key={key}>
             <label htmlFor={key}>
-              {key === "b2cMarkupPercentage" ? "B2C Markup %" : "Office Markup %"}
+              {key === "b2cMarkupPercentage" ? "B2C Markup %" : "Office Markup %"}
             </label>
             {editMarkup ? (
               <input
@@ -120,6 +186,28 @@ export default function AdminSettingsPage() {
       {/* Exchange Rates */}
       <fieldset className={styles.fieldset}>
         <legend>Exchange Rates (per AMD)</legend>
+
+        {/* Mode + status */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 10,
+            marginBottom: 10,
+            background: "#f8fafc",
+            border: "1px solid #e5e7eb",
+            padding: 10,
+            borderRadius: 8,
+          }}
+        >
+          <div><b>Mode:</b> {settings.exchangeMode?.toUpperCase() || "—"}</div>
+          <div><b>Source:</b> {settings.ratesSource || "—"}</div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <b>Last update:</b> {fmtDateTime(settings.lastRatesUpdateAt)}
+          </div>
+        </div>
+
+        {/* Mode switch */}
         <div className={styles.radioGroup}>
           {["auto", "manual"].map((m) => (
             <label key={m}>
@@ -133,15 +221,28 @@ export default function AdminSettingsPage() {
               {m.charAt(0).toUpperCase() + m.slice(1)}
             </label>
           ))}
+          {ratesMode === "auto" && (
+            <button
+              type="button"
+              className={styles.button}
+              onClick={refreshNow}
+              disabled={refreshing}
+              style={{ marginLeft: 12 }}
+            >
+              {refreshing ? "Refreshing…" : "Refresh now"}
+            </button>
+          )}
         </div>
-        {["USD", "EUR", "RUB"].map((key) => (
+
+        {/* Rates list */}
+        {["USD", "EUR", "RUB", "GBP"].map((key) => (
           <div className={styles.formRow} key={key}>
             <label htmlFor={key}>{key} Rate</label>
             {ratesMode === "manual" ? (
               <input
                 id={key}
                 name={key}
-                type="number"
+                type={key === "GBP" ? "number" : "number"}
                 value={form[key]}
                 onChange={handleChange}
                 min="0"

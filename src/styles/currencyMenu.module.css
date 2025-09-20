@@ -1,0 +1,35 @@
+.menu {
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  min-width: 160px;
+  box-shadow: 0 12px 24px rgba(16,24,40,0.18);
+  z-index: 1500;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #111827;
+  font-size: 14px;
+}
+
+.item:hover {
+  background: #f8fafc;
+}
+
+.active {
+  background: #fff3ec;                 /* brand-ի մեղմ երանգ */
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.check {
+  width: 16px;
+  display: inline-flex;
+  justify-content: center;
+}

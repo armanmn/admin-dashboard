@@ -1,4 +1,5 @@
 // export default HotelFiltersSidebar;
+// NEW
 "use client";
 import React, { useState } from "react";
 import styles from "@/styles/hotelFiltersSidebar.module.css";
