@@ -337,7 +337,7 @@ export function useHotelDetails({
           if (Array.isArray(distances) && distances.length) setDistances(distances);
 
           if (pictures.length) {
-            setHeroPhotos(pictures.slice(0, 5));
+            setHeroPhotos(pictures);
             setTotalPhotoCount(pictures.length);
           }
 

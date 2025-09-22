@@ -7,7 +7,7 @@ import HotelDetailsView from "@/components/admin/hotel/HotelDetailsView";
 import { useHotelDetails } from "@/hooks/useHotelDetails";
 import { useSelectionStore } from "@/stores/selectionStore";
 
-export default function Page() {
+export default function HotelDetailsPage() {
   const { id } = useParams();
   const q = useSearchParams();
   const router = useRouter();

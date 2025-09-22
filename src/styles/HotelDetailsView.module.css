@@ -1,0 +1,59 @@
+.page {
+  padding: 12px;
+  /* համոզվում ենք, որ ancestors-ում overflow չկա, որ sticky-ն աշխատի */
+  overflow: visible;
+}
+
+.backBtn {
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.headerStrip {
+  margin-bottom: 8px;
+  color: #444;
+}
+
+.changeBtn {
+  margin-bottom: 16px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: start;
+}
+
+.offersBlock { margin-top: 16px; }
+
+/* Sticky right rail
+   Top-ը դնում ենք navbar-ի բարձրությամբ (+ փոքր բացթողում):
+   Կարող ես գլոբալում նշանակել --app-header-h փոփոխականը, բայց կա նաև fallback 64px.
+*/
+.rail {
+  position: sticky;
+  top: calc(var(--app-header-h, 60px) + 12px); /* navbar + փոքր բացթողում */
+  height: max-content;        /* չձգվի ամբողջ տողի բարձրությանը */
+  align-self: start;          /* grid stretch-ը անջատ */
+  z-index: 5;                 /* navbar-ից ցածր, բայց բովանդակությունից բարձր */
+}
+
+/* tighter top on small screens, եթե header-ը ավելի բարակ է */
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .rail {
+    top: calc(var(--app-header-h, 56px) + 10px);
+  }
+}
