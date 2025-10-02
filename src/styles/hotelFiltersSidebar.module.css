@@ -1,48 +1,67 @@
+/* src/styles/hotelFiltersSidebar.module.css */
+
 .sidebar {
-  padding: 20px;
+  padding: 16px;
   background: #fff;
   border: 1px solid #eee;
-  border-radius: 10px;
-  width: 250px;
+  border-radius: 12px;
+  width: 260px;
   font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .section {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+}
+
+.section:last-child {
+  margin-bottom: 0;
 }
 
 .section label {
   font-weight: 600;
   display: block;
-  margin-bottom: 6px;
-  color: #333;
+  margin-bottom: 8px;
+  color: #222;
 }
 
+/* Inputs */
 .section input[type="number"] {
   width: 100%;
   padding: 8px 10px;
-  margin-top: 5px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  margin-top: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   font-size: 14px;
   outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
 
-.amenitiesList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 8px;
+.section input[type="number"]:focus {
+  border-color: #f36323;
+  box-shadow: 0 0 0 3px rgba(243, 99, 35, 0.15);
 }
 
-.amenityItem {
+/* One-column list (checkboxes) */
+.oneColumnList {
+  display: grid;
+  grid-template-columns: 1fr; /* ✅ only one column, no media overrides */
+  gap: 10px;
+}
+
+/* Shared row item */
+.checkboxItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 25px;
-  cursor: pointer;
+  gap:  8px;
+  font-size: 14px;
+  color: #444;
+  line-height: 1.3;
+  font-weight: 400;
 }
 
+/* Custom checkbox look */
+/* checkbox-ի կողքը մշտական հեռավորություն */
 .checkbox {
   appearance: none;
   width: 18px;
@@ -51,10 +70,43 @@
   border-radius: 4px;
   position: relative;
   cursor: pointer;
-  flex-shrink: 0;         /* ✅ Չի թույլ տալիս փոքրանալ */
-  margin: 0;              /* ✅ Խուսափում ենք default vertical alignment bug-ից */
-  display: inline-block;  /* ✅ Consistent box model */
-  vertical-align: middle; /* ✅ Հստակեցնում է */
+  flex-shrink: 0;
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+  transition: border-color .15s ease, background-color .15s ease;
+
+  /* ⬇️ ԱՅՍ ՏՈՂԸ ԱՎԵԼԱՑՐՈՒ */
+  margin-right: 8px; /* “մեկ պրոբելից” մի փոքր ավելի հարմար տարածք */
+}
+
+
+.boardLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;          /* badge-ը և անվանումը սահուն են երևում */
+  color: #374151;    /* մի քիչ մգացրած տեքստ */
+}
+
+.codeBadge {
+  font-size: 12px;           /* ⬅️ փոքր, նուրբ */
+  font-weight: 500;          /* թեթև “medium”, ոչ թե bold */
+  background: #f3f4f6;       /* բաց մոխրագոյն ֆոն */
+  border: 1px solid #e5e7eb; /* նուրբ եզրագիծ */
+  color: #111827;            /* գրության գույն */
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: .2px;
+}
+
+.codeText {
+  font-size: 14px;
+  font-weight: 400;          /* սովորական տեքստ, ոչ heavy */
+  color: #374151;
+}
+
+.checkbox:hover {
+  border-color: #999;
 }
 
 .checkbox:checked {
@@ -64,41 +116,119 @@
 
 .checkbox:checked::after {
   content: "✔";
-  color: white;
+  color: #fff;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -56%);
 }
 
-.checkboxItem {
+/* Min Stars UI (popover) */
+.starsTrigger {
   display: flex;
-  align-items: center; /* ✅ Սինխրոնիզացնում է vertical alignment */
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
   font-size: 14px;
+}
+
+.chevron {
+  opacity: .6;
+  font-size: 12px;
+}
+
+.starsPopover {
+  position: absolute;
+  margin-top: 6px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  padding: 10px;
+  z-index: 20;
+  width: 100%;
+}
+
+.section { position: relative; } /* anchor for popover */
+
+.starsList {
+  display: grid;
+  gap: 6px;
+}
+
+.starsChoice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.starsChoice:hover {
+  background: #f9fafb;
+}
+
+.starsInline {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.star {
+  color: #c7cbd1;
+  font-size: 16px;
+}
+
+.starActive {
+  color: #f59e0b; /* amber */
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.starsClear {
+  margin-top: 6px;
+  padding: 6px 8px;
+  width: 100%;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
   color: #444;
-  line-height: 1.4;
+  cursor: pointer;
 }
 
-.checkboxItem label {
-  margin-top: 5px;
+.starsClear:hover {
+  background: #e5e7eb;
 }
 
+/* Primary button */
 .applyBtn {
   background: #f36323;
-  color: white;
+  color: #fff;
   padding: 10px;
   border: none;
   width: 100%;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
-  transition: background-color 0.2s ease;
+  transition: background-color .2s ease, transform .02s ease;
 }
 
 .applyBtn:hover {
   background-color: #e3561e;
+}
+
+.applyBtn:active {
+  transform: translateY(1px);
 }

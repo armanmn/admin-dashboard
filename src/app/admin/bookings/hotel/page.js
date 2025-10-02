@@ -1,20 +1,16 @@
-// // src/app/admin/hotels/page.jsx  կամ  src/pages/admin/hotels/index.jsx
+// // src/app/admin/hotel/page.js կամ որտեղ է քո HotelBookingPage-ը
 // "use client";
 // import React, { useState, useCallback } from "react";
 // import HotelSearchBar from "@/components/admin/HotelSearchBar";
 // import HotelFiltersSidebar from "@/components/admin/HotelFiltersSidebar";
-// import HotelResultsView from "@/components/admin/HotelResultsView";
-// import styles from "@/styles/hotelBookingPage.module.css";
+// import SupplierResultsView from "@/components/admin/SupplierResultsView";
 // import AISmartSearch from "@/components/AI/AISmartSearch";
 // import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
-
-// // Live supplier results
-// import SupplierResultsView from "@/components/admin/SupplierResultsView";
+// import styles from "@/styles/hotelBookingPage.module.css";
 
 // const HotelBookingPage = () => {
 //   const [searchParams, setSearchParams] = useState({});
 //   const [uiFilters, setUiFilters] = useState({});
-//   const [resultsSource, setResultsSource] = useState("db"); // "db" | "live"
 
 //   const {
 //     city,
@@ -22,23 +18,19 @@
 //     checkOutDate,
 //     adults,
 //     children,
-//     childrenAges,         // ✅ վերցնենք store-ից
 //     rooms,
 //     setCriteria,
 //   } = useSearchCriteriaStore();
 
-//   // ✅ Սկզբնական արժեքները, որ HotelSearchBar-ը ստանա նաև ages
 //   const searchCriteria = {
 //     location: city,
 //     checkInDate,
 //     checkOutDate,
 //     adults,
 //     children,
-//     childrenAges,         // ✅
 //     rooms,
 //   };
 
-//   // ✅ handleSearch — now passes/keeps childrenAges as well + bumps nonce
 //   const handleSearch = useCallback(
 //     (data) => {
 //       const location = data.location ?? data.destination ?? "";
@@ -48,8 +40,8 @@
 //         checkOutDate,
 //         adults,
 //         children,
+//         childrenAges, // ⬅ պահում ենք, նույնիսկ যদি հիմա sidebar-ում չօգտագործես
 //         rooms,
-//         childrenAges, // ✅ ստանում ենք, եթե չկա՝ կմնա undefined (store-ը normalize է անում)
 //       } = data;
 
 //       const next = {
@@ -59,14 +51,12 @@
 //         checkOutDate,
 //         adults,
 //         children,
-//         childrenAges, // ✅
+//         childrenAges,
 //         rooms,
 //       };
 
-//       setSearchParams(next);     // UI filters/props համար
-//       setCriteria(next);         // store state
-//       // force re-fetch in SupplierResultsView (nonce dependency)
-//       useSearchCriteriaStore.getState().bumpNonce(); // ✅
+//       setSearchParams(next);
+//       setCriteria(next);
 //     },
 //     [setCriteria]
 //   );
@@ -75,37 +65,17 @@
 //     <div className={styles.container}>
 //       <h2>Hotel Booking</h2>
 
-//       <AISmartSearch onSearch={handleSearch} />
-//       <HotelSearchBar initialValues={searchCriteria} onSearch={handleSearch} />
+//       {/* AI Search */}
+//       <div className={styles.sectionGap}>
+//         <AISmartSearch onSearch={handleSearch} />
+//       </div>
 
-//       {/* Results source tabs */}
-//       <div style={{ margin: "16px 0", display: "flex", gap: 12 }}>
-//         <button
-//           onClick={() => setResultsSource("db")}
-//           style={{
-//             padding: "8px 12px",
-//             borderRadius: 8,
-//             border:
-//               resultsSource === "db" ? "2px solid #333" : "1px solid #ccc",
-//             background: resultsSource === "db" ? "#f3f3f3" : "white",
-//             cursor: "pointer",
-//           }}
-//         >
-//           DB Results
-//         </button>
-//         <button
-//           onClick={() => setResultsSource("live")}
-//           style={{
-//             padding: "8px 12px",
-//             borderRadius: 8,
-//             border:
-//               resultsSource === "live" ? "2px solid #333" : "1px solid #ccc",
-//             background: resultsSource === "live" ? "#f3f3f3" : "white",
-//             cursor: "pointer",
-//           }}
-//         >
-//           Live (GoGlobal)
-//         </button>
+//       {/* Սովորական Search Bar + divider */}
+//       <div className={styles.searchBarSection}>
+//         <HotelSearchBar
+//           initialValues={searchCriteria}
+//           onSearch={handleSearch}
+//         />
 //       </div>
 
 //       <div className={styles.mainContent}>
@@ -113,14 +83,11 @@
 //           <HotelFiltersSidebar onFilterChange={setUiFilters} />
 //         </div>
 
-//         {resultsSource === "db" ? (
-//           <HotelResultsView searchParams={searchParams} uiFilters={uiFilters} />
-//         ) : (
-//           <SupplierResultsView
-//             searchParams={searchParams}
-//             uiFilters={uiFilters}
-//           />
-//         )}
+//         {/* ✅ Միակ view — Live (GoGlobal) */}
+//         <SupplierResultsView
+//           searchParams={searchParams}
+//           uiFilters={uiFilters}
+//         />
 //       </div>
 //     </div>
 //   );
@@ -128,7 +95,7 @@
 
 // export default HotelBookingPage;
 
-// src/app/admin/hotels/page.js կամ որտեղ է քո HotelBookingPage-ը
+// src/app/admin/hotel/page.js
 "use client";
 import React, { useState, useCallback } from "react";
 import HotelSearchBar from "@/components/admin/HotelSearchBar";
@@ -141,6 +108,7 @@ import styles from "@/styles/hotelBookingPage.module.css";
 const HotelBookingPage = () => {
   const [searchParams, setSearchParams] = useState({});
   const [uiFilters, setUiFilters] = useState({});
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false); // ⬅ drawer toggle (≤1240px)
 
   const {
     city,
@@ -170,7 +138,7 @@ const HotelBookingPage = () => {
         checkOutDate,
         adults,
         children,
-        childrenAges, // ⬅ պահում ենք, նույնիսկ যদি հիմա sidebar-ում չօգտագործես
+        childrenAges,
         rooms,
       } = data;
 
@@ -191,34 +159,83 @@ const HotelBookingPage = () => {
     [setCriteria]
   );
 
+  const applyUiFilters = (payload) => {
+    setUiFilters(payload);
+    // drawer-ը փակենք փոքր էկրաններում
+    setIsFiltersOpen(false);
+  };
+
   return (
     <div className={styles.container}>
-      <h2>Hotel Booking</h2>
+      <div className={styles.pageHeader}>
+        <h2>Hotel Booking</h2>
+
+        {/* visible only ≤1240px */}
+        <button
+          type="button"
+          className={styles.filterToggle}
+          onClick={() => setIsFiltersOpen(true)}
+          aria-label="Open filters"
+        >
+          Filters
+        </button>
+      </div>
 
       {/* AI Search */}
       <div className={styles.sectionGap}>
         <AISmartSearch onSearch={handleSearch} />
       </div>
 
-      {/* Սովորական Search Bar + divider */}
+      {/* Classic Search Bar */}
       <div className={styles.searchBarSection}>
-        <HotelSearchBar
-          initialValues={searchCriteria}
-          onSearch={handleSearch}
-        />
+        <HotelSearchBar initialValues={searchCriteria} onSearch={handleSearch} />
       </div>
 
+      {/* Main */}
       <div className={styles.mainContent}>
-        <div className={styles.sidebarWrapper}>
-          <HotelFiltersSidebar onFilterChange={setUiFilters} />
+        {/* Desktop sidebar (hidden ≤1240px) */}
+        <aside className={styles.sidebarWrapper} aria-label="Filters">
+          <HotelFiltersSidebar onFilterChange={applyUiFilters} />
+        </aside>
+
+        {/* Results */}
+        <section className={styles.resultsWrapper}>
+          <SupplierResultsView searchParams={searchParams} uiFilters={uiFilters} />
+        </section>
+      </div>
+
+      {/* Off-canvas drawer (only shown ≤1240px via CSS) */}
+      <div
+        className={`${styles.sidebarDrawer} ${isFiltersOpen ? styles.open : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Filters"
+      >
+        <div className={styles.drawerHead}>
+          <h4>Filters</h4>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={() => setIsFiltersOpen(false)}
+            aria-label="Close filters"
+          >
+            ×
+          </button>
         </div>
 
-        {/* ✅ Միակ view — Live (GoGlobal) */}
-        <SupplierResultsView
-          searchParams={searchParams}
-          uiFilters={uiFilters}
-        />
+        <div className={styles.drawerBody}>
+          <HotelFiltersSidebar onFilterChange={applyUiFilters} />
+        </div>
       </div>
+
+      {/* Backdrop for drawer */}
+      {isFiltersOpen && (
+        <div
+          className={styles.backdrop}
+          onClick={() => setIsFiltersOpen(false)}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 };

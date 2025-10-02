@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
+import GuestsRoomsPicker from "@/components/admin/GuestsRoomsPicker";
 
 import {
   suggestCities,
@@ -14,19 +15,27 @@ import {
   formatCityLabel,
 } from "@/utils/citySearch";
 
-const clampAge = (n) => {
-  const v = Math.floor(Number(n) || 0);
-  return Math.max(0, Math.min(17, v));
-};
-const syncAgesToCount = (count, current = []) => {
-  const c = Math.max(0, Number(count) || 0);
-  const base = Array.isArray(current) ? current.slice(0, c) : [];
-  while (base.length < c) base.push(7); // sensible default
-  return base;
-};
+function toRoomSpecFromInitial(iv = {}) {
+  // Աջակցում ենք և aggregate, և csv ձևաչափերին
+  const rooms = iv.rooms ?? 1;
+
+  const adultsCSV =
+    iv.adultsCSV ?? (iv.adults != null ? String(iv.adults) : "2");
+
+  const childrenCSV =
+    iv.childrenCSV ?? (iv.children != null ? String(iv.children) : "0");
+
+  const childrenAgesCSV =
+    iv.childrenAgesCSV ??
+    (Array.isArray(iv.childrenAges)
+      ? iv.childrenAges.join(",") // single-room legacy → "5,7"
+      : iv.childrenAges || "");
+
+  return { rooms, adultsCSV, childrenCSV, childrenAgesCSV };
+}
 
 const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
-  // Destination
+  /* ---------------- Destination ---------------- */
   const [location, setLocation] = useState(initialValues.location || "");
   const [selectedCityCode, setSelectedCityCode] = useState(
     initialValues.cityCode || null
@@ -34,7 +43,7 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
   const [citySuggestions, setCitySuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Dates
+  /* ---------------- Dates ---------------- */
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef();
 
@@ -50,32 +59,21 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
     },
   ]);
 
-  // Guests/Rooms
-  const [showGuestOptions, setShowGuestOptions] = useState(false);
-  const guestRef = useRef();
-
-  const [adults, setAdults] = useState(initialValues.adults ?? 2);
-  const [children, setChildren] = useState(initialValues.children ?? 0);
-  const [rooms, setRooms] = useState(initialValues.rooms ?? 1);
-  const [childrenAges, setChildrenAges] = useState(
-    Array.isArray(initialValues.childrenAges)
-      ? syncAgesToCount(initialValues.children ?? 0, initialValues.childrenAges)
-      : syncAgesToCount(initialValues.children ?? 0, [])
+  /* ---------------- Guests / Rooms (PER-ROOM CSV) ---------------- */
+  const [roomSpec, setRoomSpec] = useState(() =>
+    toRoomSpecFromInitial(initialValues)
   );
+  const pickerRef = useRef(null);
 
-  // keep ages array in sync with children count
-  useEffect(() => {
-    setChildrenAges((prev) => syncAgesToCount(children, prev));
-  }, [children]);
+  // ⭐ hydrate guard՝ guests/rooms-ը միայն մեկ անգամ ծագումից
+  const hydratedRef = useRef(false);
 
-  // close popovers on outside click
+  // close popovers on outside click (calendar + suggestions)
   useEffect(() => {
     const onDocClick = (e) => {
-      if (guestRef.current && !guestRef.current.contains(e.target))
-        setShowGuestOptions(false);
       if (calendarRef.current && !calendarRef.current.contains(e.target))
         setShowCalendar(false);
-      // suggestions list: close if click outside the destination input/suggestions
+
       if (
         !e.target.closest?.(`.${styles.input}`) &&
         !e.target.closest?.(`.${styles.suggestionList}`)
@@ -87,19 +85,12 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  // sync initialValues
+  // sync destination + dates միշտ OK է թարմացնել
   useEffect(() => {
     if (initialValues.location !== undefined)
       setLocation(initialValues.location);
-    if (initialValues.adults !== undefined) setAdults(initialValues.adults);
-    if (initialValues.children !== undefined)
-      setChildren(initialValues.children ?? 0);
-    if (initialValues.rooms !== undefined) setRooms(initialValues.rooms);
     if (initialValues.cityCode !== undefined)
       setSelectedCityCode(initialValues.cityCode);
-    if (Array.isArray(initialValues.childrenAges)) {
-      setChildrenAges(syncAgesToCount(initialValues.children ?? 0, initialValues.childrenAges));
-    }
 
     if (initialValues.checkInDate && initialValues.checkOutDate) {
       setRange([
@@ -110,9 +101,32 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
         },
       ]);
     }
-  }, [initialValues]);
 
-  // suggestions via backend (DB) resolver
+    // guests/rooms — hydrate ONLY ONCE (URL-ից վերադառնալիս նույնպես աշխատում է mount-ին)
+    if (!hydratedRef.current) {
+      const hasGuestSpec =
+        initialValues.rooms != null ||
+        initialValues.adultsCSV != null ||
+        initialValues.childrenCSV != null ||
+        initialValues.childrenAgesCSV != null ||
+        initialValues.adults != null ||
+        initialValues.children != null ||
+        initialValues.childrenAges != null;
+
+      if (hasGuestSpec) {
+        setRoomSpec(toRoomSpecFromInitial(initialValues));
+      }
+      hydratedRef.current = true;
+    }
+  }, [
+    initialValues.location,
+    initialValues.cityCode,
+    initialValues.checkInDate,
+    initialValues.checkOutDate,
+    // ⛔️ մի՛ ավելացրու guests-կապված dependency—ներ այստեղ
+  ]);
+
+  /* ---------------- destination suggestions ---------------- */
   const handleLocationInput = async (e) => {
     const value = e.target.value;
     setLocation(value);
@@ -139,7 +153,22 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
     setCitySuggestions([]);
   };
 
+  /* ---------------- search ---------------- */
   const handleSearch = async () => {
+    // 🔁 force-commit picker-ի ընթացիկ վիճակը
+    const committed = pickerRef.current?.getCurrentPayload?.();
+    const effective = committed
+      ? {
+          rooms: committed.rooms,
+          adultsCSV: committed.adultsCSV,
+          childrenCSV: committed.childrenCSV,
+          childrenAgesCSV: committed.childrenAgesCSV,
+        }
+      : roomSpec;
+
+    // պահենք էլ state-ում, որ UI-ն ձևաչափվի committed արժեքներով
+    setRoomSpec(effective);
+
     let cityCode = selectedCityCode;
 
     if (!cityCode && location.trim()) {
@@ -152,19 +181,32 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
       }
     }
 
+    const checkInDate = format(range[0].startDate, "yyyy-MM-dd");
+    const checkOutDate = format(range[0].endDate, "yyyy-MM-dd");
+    const MS = 24 * 60 * 60 * 1000;
+    const nights = Math.max(
+      1,
+      Math.round((range[0].endDate - range[0].startDate) / MS)
+    );
+
     const searchData = {
       location,
       cityCode: cityCode || null,
-      checkInDate: format(range[0].startDate, "yyyy-MM-dd"),
-      checkOutDate: format(range[0].endDate, "yyyy-MM-dd"),
-      adults,
-      children: children ?? 0,
-      childrenAges: syncAgesToCount(children, childrenAges), // ✅ ներառում ենք
-      rooms,
+      checkInDate,
+      checkOutDate,
+      nights,
+      // ✅ supplier-ready per-room CSV payload
+      rooms: effective.rooms,
+      adults: effective.adultsCSV, // "2,2"
+      children: effective.childrenCSV, // "1,2"
+      childrenAges: effective.childrenAgesCSV, // "5|9,11"
     };
 
-    // notify store about a new search (triggers live re-fetch paths)
-    useSearchCriteriaStore.getState().bumpNonce();
+    // Store-ում nonce—ը թարմացնենք, որ results–ը re-fetch անի
+    useSearchCriteriaStore.getState().bumpNonce?.();
+
+    // եթե store-ը ունեք setCriteria, սա էլ կարող ես ավելացնել (ոչ պարտադիր)
+    // useSearchCriteriaStore.getState().setCriteria?.(searchData);
 
     onSearch?.(searchData);
   };
@@ -236,109 +278,24 @@ const HotelSearchBar = ({ initialValues = {}, onSearch }) => {
         </div>
       </div>
 
-      {/* Guests / Rooms */}
-      <div className={styles.inputGroup}>
-        <div
-          className={styles.guestSelector}
-          ref={guestRef}
-          onClick={() => setShowGuestOptions((v) => !v)}
-          role="button"
-          aria-haspopup="dialog"
-          aria-expanded={showGuestOptions}
-        >
-          {adults} Adults • {children ?? 0} Children • {rooms} Room
-          {showGuestOptions && (
-            <div
-              className={styles.guestOptions}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-label="Guests and rooms"
-            >
-              {/* Counters */}
-              {[
-                { label: "👤 Adults", value: adults, setter: setAdults, min: 1 },
-                { label: "🧒 Children", value: children ?? 0, setter: (n)=>{ setChildren(n); }, min: 0 },
-                { label: "🏠 Rooms", value: rooms, setter: setRooms, min: 1 },
-              ].map(({ label, value, setter, min }) => (
-                <div className={styles.optionRow} key={label}>
-                  <span className={styles.optionLabel}>{label}</span>
-                  <div className={styles.counter}>
-                    <button
-                      type="button"
-                      className={styles.counterBtn}
-                      onClick={() => setter(Math.max(min, (value ?? 0) - 1))}
-                    >
-                      −
-                    </button>
-                    <span className={styles.counterValue}>{value ?? 0}</span>
-                    <button
-                      type="button"
-                      className={styles.counterBtn}
-                      onClick={() => setter((value ?? 0) + 1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ))}
+      {/* Guests / Rooms — PER-ROOM picker */}
+      <GuestsRoomsPicker
+        ref={pickerRef}
+        value={roomSpec}
+        onChange={(payload) => {
+          setRoomSpec({
+            rooms: payload.rooms,
+            adultsCSV: payload.adultsCSV,
+            childrenCSV: payload.childrenCSV,
+            childrenAgesCSV: payload.childrenAgesCSV,
+          });
+        }}
+      />
 
-              {/* Children ages */}
-              {children > 0 && (
-                <div className={styles.agesBlock}>
-                  <div className={styles.agesTitle}>Children ages</div>
-                  <div className={styles.ageGrid}>
-                    {childrenAges.map((age, idx) => (
-                      <label className={styles.ageItem} key={idx}>
-                        <span>Child {idx + 1}</span>
-                        <select
-                          className={styles.ageSelect}
-                          value={age}
-                          onChange={(e) => {
-                            const v = clampAge(e.target.value);
-                            setChildrenAges((prev) => {
-                              const next = prev.slice();
-                              next[idx] = v;
-                              return next;
-                            });
-                          }}
-                        >
-                          {Array.from({ length: 18 }, (_, n) => n).map((n) => (
-                            <option key={n} value={n}>
-                              {n}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className={styles.actionsRow}>
-                <button
-                  type="button"
-                  className={styles.btnSecondary}
-                  onClick={() => setShowGuestOptions(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className={styles.btnPrimary}
-                  onClick={() => {
-                    setShowGuestOptions(false);
-                  }}
-                >
-                  Apply
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <button className={`${styles.searchBtn} btn-action`} onClick={handleSearch}>
+      <button
+        className={`${styles.searchBtn} btn-action`}
+        onClick={handleSearch}
+      >
         Search
       </button>
     </div>

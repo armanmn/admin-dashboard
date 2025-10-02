@@ -29,9 +29,10 @@
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0,1fr) 360px;
   gap: 18px;
   align-items: start;
+  overflow: visible;
 }
 
 .offersBlock { margin-top: 16px; }
@@ -41,19 +42,15 @@
    Կարող ես գլոբալում նշանակել --app-header-h փոփոխականը, բայց կա նաև fallback 64px.
 */
 .rail {
+  position: -webkit-sticky;
   position: sticky;
-  top: calc(var(--app-header-h, 60px) + 12px); /* navbar + փոքր բացթողում */
-  height: max-content;        /* չձգվի ամբողջ տողի բարձրությանը */
-  align-self: start;          /* grid stretch-ը անջատ */
-  z-index: 5;                 /* navbar-ից ցածր, բայց բովանդակությունից բարձր */
+  top: calc(var(--app-header-h, 80px) + 12px);
+  align-self: start;
+  z-index: 5;
 }
 
 /* tighter top on small screens, եթե header-ը ավելի բարակ է */
 @media (max-width: 1024px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-  .rail {
-    top: calc(var(--app-header-h, 56px) + 10px);
-  }
+  .grid { grid-template-columns: 1fr; }
+  .rail { position: static; top: auto; }
 }

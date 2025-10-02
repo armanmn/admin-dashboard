@@ -16,27 +16,20 @@ export default function HotelDetailsPage() {
   const arrivalDate = q.get("arrivalDate") || undefined;
   const nights = Number(q.get("nights") || 1);
   const rooms = Number(q.get("rooms") || 1);
-  const adults = Number(q.get("adults") || 2);
-  const children = Number(q.get("children") || 0);
-  const childrenAges = q.get("childrenAges") || ""; // e.g. "5,12" or "5,12|3"
+
+  // ⚠ adults/children/childrenAges այժմ՝ CSV strings, ոչ թե single ints
+  const adultsCSV = q.get("adults") || "2";
+  const childrenCSV = q.get("children") || "0";
+  const childrenAgesCSV = q.get("childrenAges") || ""; // e.g. "5,12|3"
   const cityId = q.get("cityId") || undefined;
-  const filterBasis = q.get("filterBasis") || q.get("basis") || undefined; // e.g. "BB,HB"
+  const filterBasis = q.get("filterBasis") || q.get("basis") || undefined;
   const userCurrency = q.get("currency") || "USD";
 
-  const resetSelection = useSelectionStore((s) => s.reset); // selector-ով վերցնենք հենց ֆունկցիան
+  const resetSelection = useSelectionStore((s) => s.reset);
 
   useEffect(() => {
     if (typeof resetSelection === "function") resetSelection();
-  }, [
-    resetSelection,
-    id,
-    arrivalDate,
-    nights,
-    rooms,
-    adults,
-    children,
-    childrenAges,
-  ]);
+  }, [resetSelection, id, arrivalDate, nights, rooms, adultsCSV, childrenCSV, childrenAgesCSV]);
 
   // ---- data hook (single-hotel endpoint + parallel info) ----
   const {
@@ -54,15 +47,16 @@ export default function HotelDetailsPage() {
     id,
     arrivalDate,
     nights,
+    // FE → BE: adults/children/childrenAges որպես strings (CSV),
+    // controller-ը արդեն same logic-ով կառուցում է pax array:
     rooms,
-    adults,
-    children,
-    childrenAges,
+    adults: adultsCSV,
+    children: childrenCSV,
+    childrenAges: childrenAgesCSV,
     cityCode: cityId,
     filterBasis,
   });
 
-  // fallback միայն URL-ից, եթե hook-ը դեռ չի բերել
   const mergedHotel = hotel || {
     _id: id,
     name: q.get("name") || "",
@@ -89,8 +83,9 @@ export default function HotelDetailsPage() {
         arrivalDate={arrivalDate}
         checkOutDate={checkOutDate}
         nights={nights}
-        adults={adults}
-        children={children}
+        // Ցույց տալու նպատակով՝ կարող ես նաև փոխանցել parsed ցուցիչներ, բայց BE-ին արդեն CSV-ներն ենք տալիս
+        adults={adultsCSV}
+        children={childrenCSV}
         rooms={rooms}
         userCurrency={userCurrency}
         role={null}
@@ -98,7 +93,7 @@ export default function HotelDetailsPage() {
         exchangeRates={null}
         settings={null}
         onBack={() => router.back()}
-        onChangeSearch={() => {}}
+        // onChangeSearch հանվեց, որովհետև այլևս pax editor չկա
         onCheckAvailability={() => {}}
         fullAddress={fullAddress}
         areaLabel={areaLabel}

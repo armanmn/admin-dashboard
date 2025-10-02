@@ -1,45 +1,128 @@
+/* src/styles/hotelBookingPage.module.css */
+
 .container {
-  padding: 24px;
+  padding: 16px;
 }
 
-.mainContent {
+.pageHeader {
   display: flex;
-  gap: 24px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-/* Left Sidebar */
+.pageHeader h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+/* hidden by default (desktop), visible on small */
+.filterToggle {
+  margin-left: auto;
+  display: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.filterToggle:hover { background: #f9fafb; }
+
+.sectionGap { margin-bottom: 10px; }
+.searchBarSection { margin-bottom: 12px; }
+
+/* Desktop layout: sidebar + results */
+.mainContent {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+}
+
 .sidebarWrapper {
-  width: 250px;
-  flex-shrink: 0;
+  position: sticky;
+  top: 12px;
+  align-self: start;
+  height: max-content;
 }
 
-/* Mobile view */
-@media (max-width: 768px) {
+.resultsWrapper {
+  min-width: 0; /* prevent narrow text columns */
+}
+
+/* ========== ≤1440px: sidebar becomes off-canvas drawer ========== */
+@media (max-width: 1440px) {
   .mainContent {
-    flex-direction: column;
+    grid-template-columns: 1fr; /* only results in flow */
+    gap: 12px;
   }
 
   .sidebarWrapper {
-    width: 100%;
+    display: none; /* hide desktop sidebar */
   }
-}
 
-/* --- Unified section spacing --- */
-.sectionGap {
-  margin-bottom: 20px;      /* նույն հեռավորությունը բոլոր բլոկների միջև */
-}
+  .filterToggle {
+    display: inline-flex; /* show button */
+  }
 
-/* --- Search bar divider --- */
-.searchBarSection {
-  margin-bottom: 20px;      /* նույն հեռավորությունը ինչ sectionGap-ը */
-  padding-bottom: 12px;     /* divider-ից վերև մի քիչ օդ */
-  border-bottom: 1px solid color-mix(in srgb, var(--primary-color, #f36323) 12%, #e5e7eb);
- /* նուրբ գիծ */
-}
+  /* Drawer shell */
+  .sidebarDrawer {
+    position: fixed;
+    inset: 0 auto 0 0;          /* stick to left */
+    width: 320px;
+    max-width: 85vw;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    transform: translateX(-105%);
+    transition: transform .2s ease-out, box-shadow .2s ease-out;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebarDrawer.open {
+    transform: translateX(0);
+    box-shadow: 6px 0 28px rgba(0,0,0,.12);
+  }
 
-/* Optional: dark mode-ի համար divider-ը մի քիչ մեղմ */
-@media (prefers-color-scheme: dark) {
-  .searchBarSection {
-    border-bottom-color: rgba(255,255,255,.12);
+  .drawerHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #eee;
+  }
+
+  .drawerHead h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .closeBtn {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .closeBtn:hover { background: #f9fafb; }
+
+  .drawerBody {
+    padding: 12px 14px 16px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+  }
+
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    z-index: 1095;
   }
 }

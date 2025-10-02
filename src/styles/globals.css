@@ -17,7 +17,7 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  /* overflow-x: hidden; */
 }
 
 body {
@@ -56,4 +56,60 @@ a {
   html {
     color-scheme: dark;
   }
+}
+
+/* ===== Sticky-friendly guards against horizontal overflow ===== */
+
+/* Օգտագործվող header բարձրության համար ընդհանուր փոփոխական (եթե չունես) */
+:root {
+  --app-header-h: 60px;
+}
+
+/* Մեդիա էլեմենտները երբեք չպետք է դուրս գան կոնտեյներից */
+img, svg, video, canvas, iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Լայն աղյուսակներ/կոդ՝ ներքին սքրոլով, ոչ թե էջը լայնացնելով */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table-scroll, table {
+  display: block;       /* թույլ է տալիս ներքին հորիզոնական սքրոլ */
+  overflow-x: auto;
+}
+
+/* Երկար տեքստ/կոդերը չպետք է «քաշեն» layout-ը */
+pre, code, kbd, samp {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;     /* պահպանում ենք ձևաչափը, բայց տալիս ներքին սքրոլ */
+}
+
+/* Flex/Grid երեխաներին թույլ տանք նորմալ սեղմվել */
+* {
+  min-width: 0;   /* կանխում է content-based լայնություններից «փախչելը» */
+  min-height: 0;
+}
+
+/* Երկար բառերը չթողնել, որ լայնացնեն բլոկները */
+a, p, h1, h2, h3, h4, h5, h6, .breakable {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ՈՐԵՎԷ կոնկրետ offender կոմպոնենտի համար utility-ներ (կիրառե՛լ միայն տեղային) */
+.ox-hidden { overflow-x: hidden !important; }  /* տեղայնորեն կտրելու կարիք ունենալու դեպքում */
+.ox-auto   { overflow-x: auto !important; }
+
+/* Օգտակար helper՝ sticky ռեյլերի համար (եթե երբեմն պետք գալու է) */
+.sticky-rail {
+  position: sticky;
+  top: calc(var(--app-header-h, 60px) + 12px);
+  align-self: start;
+  height: max-content;
 }
