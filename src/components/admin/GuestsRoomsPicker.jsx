@@ -10,17 +10,33 @@ import React, {
 import styles from "@/styles/hotelSearchBar.module.css";
 
 /* ---------------- utils ---------------- */
-const clamp = (n, min, max) => Math.max(min, Math.min(max, Number(n || 0)));
+const clamp = (n, min, max) => {
+  const v = Number(n);
+  return Math.max(min, Math.min(max, Number.isFinite(v) ? v : 0));
+};
 const rng = (n) => Array.from({ length: n }, (_, i) => i);
 
+// keep age nullable in UI: null => "Age" placeholder
+const clampAgeOrNull = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(17, Math.round(n)));
+};
+
+// canonicalize incoming value → internal rooms array
 function parseInitialValue(value) {
-  // ✅ ընդունում ենք երկու ձևաչափ
+  try {
+    console.debug("[GRP] parseInitialValue IN:", value);
+  } catch {}
+
+  // accepted inputs:
   // 1) legacy aggregate: { adults, children, childrenAges, rooms }
   // 2) per-room csv:     { rooms, adultsCSV, childrenCSV, childrenAgesCSV }
   const rooms = clamp(Number(value?.rooms || 1), 1, 9);
 
   const adultsCSV =
     value?.adultsCSV ?? (value?.adults != null ? String(value.adults) : "2");
+
   const childrenCSV =
     value?.childrenCSV ??
     (value?.children != null ? String(value.children) : "0");
@@ -31,32 +47,49 @@ function parseInitialValue(value) {
       ? String(value.childrenAges.join(",")) // single-room legacy → "5,7"
       : String(value?.childrenAges || ""));
 
-  const A = String(adultsCSV)
+  const A = String(adultsCSV || "")
     .split(",")
     .map((x) => clamp(x, 1, 6));
-  const C = String(childrenCSV)
+
+  const C = String(childrenCSV || "")
     .split(",")
     .map((x) => clamp(x, 0, 6));
 
-  // ✅ Supplier format: ROOMS by '|'  and ages-inside by ','
-  // example: "5|9,11"  -> room1: [5], room2: [9,11]
-  const groups = String(childrenAgesCSV || "")
-    .split("|") // rooms
+  // supplier format: ROOMS by '|'  and ages-inside by ','
+  const agesGroups = String(childrenAgesCSV || "")
+    .split("|")
     .map((seg) =>
       String(seg || "")
-        .split(",") // ages inside a room
-        .filter(Boolean)
+        .split(",")
+        .filter((s) => s !== "")
         .map((x) => clamp(x, 0, 17))
     );
 
+  const hasAgesCsv = String(childrenAgesCSV || "").trim().length > 0;
+
   const list = [];
   for (let i = 0; i < rooms; i++) {
-    const a = A[i] ?? A[0] ?? 2;
-    const c = C[i] ?? C[0] ?? 0;
-    const ages = (groups[i] || []).slice(0, c);
-    while (ages.length < c) ages.push(8); // default age
-    list.push({ adults: a, children: c, ages });
+    const adults = A[i] ?? A[0] ?? 2;
+
+    // “ages wins”: if agesCSV present → children = number of ages for that room
+    const countFromAges = hasAgesCsv ? (agesGroups[i]?.length || 0) : null;
+    const children = clamp(
+      countFromAges != null ? countFromAges : (C[i] ?? C[0] ?? 0),
+      0,
+      6
+    );
+
+    // keep existing ages; ONLY pad missing with null (placeholder), trim overflow
+    const baseAges = (agesGroups[i] || []).slice(0, children);
+    while (baseAges.length < children) baseAges.push(null);
+
+    list.push({ adults, children, ages: baseAges });
   }
+
+  try {
+    console.debug("[GRP] parseInitialValue OUT:", list);
+  } catch {}
+
   return list;
 }
 
@@ -65,15 +98,17 @@ function toPayloadFromRooms(roomsArr) {
   const adultsCSV = roomsArr.map((r) => clamp(r.adults, 1, 6)).join(",");
   const childrenCSV = roomsArr.map((r) => clamp(r.children, 0, 6)).join(",");
 
-  // ✅ BUILD FORMAT: ROOMS by '|'  and ages-inside by ','
-  // e.g. [[5],[9,11]] -> "5|9,11"
+  // build ages csv: rooms by '|'  and ages-inside by ','
+  // IMPORTANT: include ONLY numeric ages; skip null placeholders
   const childrenAgesCSV = roomsArr
-    .map((r) =>
-      (r.ages || [])
-        .slice(0, clamp(r.children, 0, 6))
-        .map((x) => clamp(x, 0, 17))
-        .join(",")
-    )
+    .map((r) => {
+      const c = clamp(r.children, 0, 6);
+      const chunk = (r.ages || []).slice(0, c);
+      const numeric = chunk
+        .map((x) => clampAgeOrNull(x))
+        .filter((v) => v !== null);
+      return numeric.join(",");
+    })
     .join("|");
 
   const totals = {
@@ -84,6 +119,7 @@ function toPayloadFromRooms(roomsArr) {
   return { rooms, adultsCSV, childrenCSV, childrenAgesCSV, totals };
 }
 
+/* ---------------- pretty summary ---------------- */
 function makeSummary(roomsArr) {
   const rooms = roomsArr.length;
   const totalA = roomsArr.reduce((s, r) => s + clamp(r.adults, 1, 6), 0);
@@ -98,11 +134,11 @@ function makeSummary(roomsArr) {
 /* ---------------- component ---------------- */
 const GuestsRoomsPicker = forwardRef(function GuestsRoomsPicker(
   {
-    // Կարող ես փոխանցել՝
-    //   legacy: { adults, children, childrenAges, rooms }
-    //   կամ csv: { rooms, adultsCSV, childrenCSV, childrenAgesCSV }
+    // accepted:
+    // legacy: { adults, children, childrenAges, rooms }
+    // csv:    { rooms, adultsCSV, childrenCSV, childrenAgesCSV }
     value = { rooms: 1, adults: 2, children: 0, childrenAges: [] },
-    onChange, // (payload) => {}  payload = { rooms, adultsCSV, childrenCSV, childrenAgesCSV, totals }
+    onChange, // (payload) => {}
     label = null,
     disabled = false,
   },
@@ -111,15 +147,23 @@ const GuestsRoomsPicker = forwardRef(function GuestsRoomsPicker(
   const [open, setOpen] = useState(false);
   const anchorRef = useRef(null);
 
-  // local editable model
-  const [roomsArr, setRoomsArr] = useState(parseInitialValue(value));
+  // editable local model
+  const [roomsArr, setRoomsArr] = useState(() => parseInitialValue(value));
 
-  // sync from parent when "value" changes
+  // sync from parent when value changes (canonical source of truth)
   useEffect(() => {
     setRoomsArr(parseInitialValue(value));
-  }, [value?.rooms, value?.adults, value?.children, value?.childrenAges, value?.adultsCSV, value?.childrenCSV, value?.childrenAgesCSV]);
+  }, [
+    value?.rooms,
+    value?.adults,
+    value?.children,
+    value?.childrenAges,
+    value?.adultsCSV,
+    value?.childrenCSV,
+    value?.childrenAgesCSV,
+  ]);
 
-  // expose commit for parent (Search button will call this)
+  // expose current payload for parent (used by HotelSearchBar to commit state)
   useImperativeHandle(
     ref,
     () => ({
@@ -145,25 +189,39 @@ const GuestsRoomsPicker = forwardRef(function GuestsRoomsPicker(
     if (roomsArr.length >= 9) return;
     setRoomsArr((prev) => [...prev, { adults: 2, children: 0, ages: [] }]);
   };
+
   const removeRoom = (idx) => {
     if (roomsArr.length <= 1) return;
     setRoomsArr((prev) => prev.filter((_, i) => i !== idx));
   };
+
   const setRoom = (idx, patch) => {
     setRoomsArr((prev) => {
-      const x = prev.slice();
-      const next = { ...x[idx], ...patch };
-      const c = clamp(next.children, 0, 6);
-      const ages = (next.ages || []).slice(0, c);
-      while (ages.length < c) ages.push(8);
-      x[idx] = { ...next, children: c, ages };
-      return x;
+      const next = prev.slice();
+      const merged = { ...next[idx], ...patch };
+      const c = clamp(merged.children, 0, 6);
+
+      // keep existing ages; fill blanks with null; trim overflow
+      const curAges = Array.isArray(merged.ages) ? merged.ages.slice() : [];
+      const ages = curAges.slice(0, c);
+      while (ages.length < c) {
+        const k = ages.length;
+        const v = curAges[k];
+        ages.push(clampAgeOrNull(v)); // will push number or null
+      }
+
+      next[idx] = { ...merged, children: c, ages };
+      return next;
     });
   };
 
   const apply = () => {
     const payload = toPayloadFromRooms(roomsArr);
-    console.log("[GRP] payload", payload);
+    try {
+      console.groupCollapsed("[GRP] APPLY → payload");
+      console.table(payload);
+      console.groupEnd();
+    } catch {}
     onChange?.(payload);
     setOpen(false);
   };
@@ -202,7 +260,7 @@ const GuestsRoomsPicker = forwardRef(function GuestsRoomsPicker(
             <div style={{ display: "grid", gap: 10 }}>
               {roomsArr.map((r, idx) => (
                 <div
-                  key={idx}
+                  key={`room-${idx}`}
                   style={{
                     border: "1px solid #e5e7eb",
                     borderRadius: 12,
@@ -294,13 +352,18 @@ const GuestsRoomsPicker = forwardRef(function GuestsRoomsPicker(
                       <div className={styles.agesTitle}>Children ages</div>
                       <div className={styles.ageGrid}>
                         {r.ages.map((age, j) => (
-                          <label className={styles.ageItem} key={j}>
+                          <label
+                            className={styles.ageItem}
+                            key={`room-${idx}-child-${j}`}
+                          >
                             <span>Child {j + 1}</span>
                             <select
                               className={styles.ageSelect}
-                              value={age}
+                              value={age ?? ""} // null → ""
                               onChange={(e) => {
-                                const a = clamp(e.target.value, 0, 17);
+                                const raw = e.target.value;
+                                const a =
+                                  raw === "" ? null : clampAgeOrNull(raw);
                                 setRoomsArr((prev) => {
                                   const copy = prev.slice();
                                   const ages = copy[idx].ages.slice();
@@ -310,6 +373,7 @@ const GuestsRoomsPicker = forwardRef(function GuestsRoomsPicker(
                                 });
                               }}
                             >
+                              <option value="">Age</option>
                               {rng(18).map((n) => (
                                 <option key={n} value={n}>
                                   {n}

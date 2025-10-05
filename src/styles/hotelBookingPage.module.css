@@ -33,6 +33,8 @@
 .sectionGap { margin-bottom: 10px; }
 .searchBarSection { margin-bottom: 12px; }
 
+.hidden { display: none; }
+
 /* Desktop layout: sidebar + results */
 .mainContent {
   display: grid;
@@ -80,7 +82,8 @@
     display: flex;
     flex-direction: column;
   }
-  .sidebarDrawer.open {
+
+  .sidebarDrawerOpen {
     transform: translateX(0);
     box-shadow: 6px 0 28px rgba(0,0,0,.12);
   }

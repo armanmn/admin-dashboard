@@ -1,8 +1,7 @@
 // src/components/admin/SupplierResultsView.jsx
-// NEW
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "@/utils/api";
 import SupplierHotelCard from "./SupplierHotelCard";
 import { useCurrencyStore } from "@/stores/currencyStore";
@@ -10,14 +9,20 @@ import { useSearchCriteriaStore } from "@/stores/searchCriteriaStore";
 import usePublicSettings from "@/hooks/usePublicSettings";
 import { resolveCityCode } from "@/utils/citySearch";
 import { differenceInCalendarDays, isValid } from "date-fns";
-import { tryConvert } from "@/utils/fx"; // ✅ instead of priceUtils
+import { tryConvert } from "@/utils/fx";
 import styles from "@/styles/supplierResultsView.module.css";
 
-// ✅ canonical children helpers (rooms '|' , ages ',')
-import { validateChildrenSpec, ROOMS_SEP, AGES_SEP } from "@/utils/childrenCsv";
+// guests utils
+import {
+  validateChildrenSpec,
+  ensureAgesForApi,
+  ROOMS_SEP,
+  AGES_SEP,
+} from "@/utils/childrenCsv";
 
 const CHUNK = 20;
 
+/* ---------------- small utils ---------------- */
 function toNights(checkIn, checkOut, fallback = 1) {
   if (
     checkIn &&
@@ -31,161 +36,23 @@ function toNights(checkIn, checkOut, fallback = 1) {
   return Math.max(1, Number(fallback) || 1);
 }
 
-/* ---------------- small utils kept local ---------------- */
-const splitCSV = (v) =>
-  String(v ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s !== "");
-
-const isCSV = (v) => typeof v === "string" && v.includes(",");
-
 const clampInt = (n, lo = 0, hi = 17) => {
   const x = Number(n);
   if (!Number.isFinite(x)) return null;
   return Math.max(lo, Math.min(hi, Math.trunc(x)));
 };
 
-function normalizeAdultsCSV(adultsParam, roomsCount) {
-  if (isCSV(adultsParam)) {
-    const nums = splitCSV(adultsParam).map((x) => Math.max(0, Number(x) || 0));
-    const arr = Array.from(
-      { length: roomsCount },
-      (_, i) => nums[i] ?? nums[nums.length - 1] ?? 0
-    );
-    return arr.join(",");
-  }
-  const n = Number(adultsParam);
-  const val = Number.isFinite(n) && n >= 0 ? n : 0;
-  return Array.from({ length: roomsCount }, () => val).join(",");
-}
+const splitCSV = (v) =>
+  String(v ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
 
-/* ---------------- CSV helpers (fixed to rooms "|" , ages ",") ---------------- */
-
-// Parse ages into per-room blocks (array of arrays)
-// Accepts input like "5|9,11" (canonical), "5,9,11" (flat), or "5|9" (single-room with pipes)
-function parseAgesBlocks(agesParam, roomsCount) {
-  const raw = String(agesParam ?? "").trim();
-  const blocks = Array.from({ length: roomsCount }, () => []);
-
-  if (!raw) return blocks;
-
-  const sanitizeAges = (s) =>
-    String(s || "")
-      .split(AGES_SEP)
-      .map((t) => clampInt(t, 0, 17))
-      .filter((n) => n !== null);
-
-  // ✅ per-room style: "5|9,11"  (rooms by '|', ages by ',')
-  if (raw.includes(ROOMS_SEP)) {
-    const segs = raw.split(ROOMS_SEP).map((s) => s.trim());
-    for (let i = 0; i < roomsCount; i++) {
-      const seg = segs[i] || "";
-      blocks[i] = seg ? sanitizeAges(seg) : [];
-    }
-    return blocks;
-  }
-
-  // flat CSV: "5,9,11" (կբաշխենք հետո ըստ children count)
-  const flat = String(raw)
-    .split(AGES_SEP)
-    .map((x) => clampInt(x, 0, 17))
-    .filter((n) => n !== null);
-
-  // annotate for later distribution
-  // @ts-ignore
-  blocks._flat = flat;
-  return blocks;
-}
-
-// children CSV → list per-room counts of length roomsCount
-function parseChildrenCounts(childrenParam, roomsCount) {
-  if (isCSV(childrenParam)) {
-    const nums = splitCSV(childrenParam).map((x) =>
-      Math.max(0, Number(x) || 0)
-    );
-    const arr = Array.from({ length: roomsCount }, (_, i) => nums[i] ?? 0);
-    return arr;
-  }
-  if (
-    childrenParam !== undefined &&
-    childrenParam !== null &&
-    String(childrenParam).trim() !== ""
-  ) {
-    const total = Math.max(0, Number(childrenParam) || 0);
-    // when only total is given → put into first room by default
-    return [
-      total,
-      ...Array.from({ length: Math.max(roomsCount - 1, 0) }, () => 0),
-    ];
-  }
-  // unspecified → all zero
-  return Array.from({ length: roomsCount }, () => 0);
-}
-
-// Distribute flat ages into rooms by counts
-function distributeFlatAges(flat, counts) {
-  const blocks = counts.map(() => []);
-  let idx = 0;
-  for (let i = 0; i < counts.length; i++) {
-    const need = Math.max(0, counts[i] || 0);
-    blocks[i] = flat.slice(idx, idx + need);
-    idx += need;
-  }
-  return blocks;
-}
-
-// Build final occupancy CSVs robustly (infers counts from ages when needed)
-function buildOccupancyCSVs(adultsParam, childrenParam, agesParam, roomsCount) {
-  const adultsCSV = normalizeAdultsCSV(adultsParam, roomsCount);
-
-  let agesBlocks = parseAgesBlocks(agesParam, roomsCount); // array[rooms] of arrays
-  let counts = parseChildrenCounts(childrenParam, roomsCount);
-
-  // detect formats
-  const hasPerRoomAges = agesBlocks.some(
-    (arr) => Array.isArray(arr) && arr.length > 0
-  );
-  // @ts-ignore
-  const hasFlatAges = Array.isArray(agesBlocks._flat);
-
-  // If childrenParam was a single total but per-room ages exist → derive counts from ages
-  if (!isCSV(childrenParam) && hasPerRoomAges) {
-    counts = agesBlocks.map((a) => a.length);
-  }
-
-  // If ages were flat → distribute by counts
-  // @ts-ignore
-  if (hasFlatAges) {
-    // @ts-ignore
-    agesBlocks = distributeFlatAges(agesBlocks._flat, counts);
-  }
-
-  // Sanitize: trim/extend to roomsCount and enforce 0–17; also trim extras to count
-  while (counts.length < roomsCount) counts.push(0);
-  if (counts.length > roomsCount) counts.length = roomsCount;
-
-  for (let i = 0; i < roomsCount; i++) {
-    const need = Math.max(0, Number(counts[i]) || 0);
-    const cur = Array.isArray(agesBlocks[i]) ? agesBlocks[i] : [];
-    const clean = cur
-      .map((n) => clampInt(n, 0, 17))
-      .filter((n) => n !== null)
-      .slice(0, need);
-    agesBlocks[i] = clean;
-  }
-
-  const childrenCSV = counts.map((n) => Math.max(0, Number(n) || 0)).join(",");
-  // ✅ build "ages by ','" inside each room, "rooms by '|'"
-  const childrenAgesCSV = agesBlocks
-    .map((arr) => arr.join(AGES_SEP))
-    .join(ROOMS_SEP);
-
-  return { adultsCSV, childrenCSV, childrenAgesCSV };
-}
+const toNum = (v) =>
+  v === "" || v === null || v === undefined ? NaN : Number(v);
 
 /* ---------------- Component ---------------- */
-const SupplierResultsView = ({ searchParams, uiFilters }) => {
+const SupplierResultsView = ({ searchParams = {}, uiFilters }) => {
   // ---------------- Local state ----------------
   const [allHotels, setAllHotels] = useState([]);
   const [visibleCount, setVisibleCount] = useState(CHUNK);
@@ -198,21 +65,9 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
 
   const effectiveViewType = canUseList ? viewType : "grid";
 
-  // // Force fallback to GRID when width < 1240 (e.g. drawer + list breaks layout)
-  // useEffect(() => {
-  //   const update = () => {
-  //     const ok =
-  //       typeof window !== "undefined" ? window.innerWidth >= 1240 : true;
-  //     setCanUseList(ok);
-  //     if (!ok && viewType === "list") {
-  //       setViewType("grid");
-  //     }
-  //   };
-  //   update();
-  //   window.addEventListener("resize", update);
-  //   return () => window.removeEventListener("resize", update);
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
+  useEffect(() => {
+    console.debug("[SRV] PROPS RAW from parent", searchParams);
+  }, [searchParams]);
 
   // Track width to decide if List is allowed
   useEffect(() => {
@@ -239,72 +94,71 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
   const nightsFromStore = useSearchCriteriaStore((s) => s.nights);
   const nonce = useSearchCriteriaStore((s) => s.nonce);
 
-  // fallback from store (legacy simple mode)
-  const childrenStore = useSearchCriteriaStore((s) => s.children);
-  const agesStore = useSearchCriteriaStore((s) => s.childrenAges);
-
-  // ---------------- Derive inputs from props ----------------
+  // ---------------- Derive inputs from props (supports legacy keys too) ----------------
   const {
     city: locationInput,
     cityCode,
+    cityId: cityIdProp,
+    arrivalDate: arrivalDateProp,
+    nights: nightsProp,
+    rooms: roomsProp,
+    adults: adultsProp, // CSV
+    children: childrenProp, // CSV
+    childrenAges: childrenAgesProp, // "a,b|c"
+    // Legacy fallback:
     checkInDate,
     checkOutDate,
-    adults = 2, // can be "2,2" or number
-    children: childrenFromQuery, // may be "1,2" or total number
-    rooms = 1,
-    childrenAges: agesFromQueryString, // may be "5|9,11" or "5,9,11"
-  } = searchParams || {};
+  } = searchParams;
 
-  const roomsCount = Math.max(1, Number(rooms) || 1);
+  // Dates – prefer canonical (arrivalDate+nights), else legacy (ci/co)
+  const arrivalDate =
+    arrivalDateProp ?? (checkInDate ? String(checkInDate) : null);
 
-  // Compose raw params (keep as-is if CSV strings; fallback to store for legacy)
-  const adultsParam = adults; // string "2,2" or number 2
-  const childrenParam =
-    childrenFromQuery !== undefined &&
-    childrenFromQuery !== null &&
-    String(childrenFromQuery).trim() !== ""
-      ? childrenFromQuery
-      : childrenStore ?? 0;
+  const nights = Number.isFinite(Number(nightsProp))
+    ? Number(nightsProp)
+    : toNights(checkInDate, checkOutDate, nightsFromStore);
 
-  const agesParam =
-    typeof agesFromQueryString === "string" && agesFromQueryString.trim()
-      ? agesFromQueryString
-      : Array.isArray(agesStore)
-      ? agesStore.join(",")
-      : "";
-
-  // Robust CSVs (+ validation) — fixed separators
-  const { adultsCSV, childrenCSV, childrenAgesCSV } = useMemo(() => {
-    return buildOccupancyCSVs(
-      adultsParam,
-      childrenParam,
-      agesParam,
-      roomsCount
-    );
-  }, [adultsParam, childrenParam, agesParam, roomsCount]);
-
-  // canonical validation (rooms '|', ages ',')
-  const agesValidPerRoom = useMemo(
-    () =>
-      validateChildrenSpec({
-        rooms: roomsCount,
-        childrenCSV,
-        childrenAgesCSV,
-      }),
-    [childrenCSV, childrenAgesCSV, roomsCount]
+  // Rooms/adults/children/ages – take exactly what we got for UI/logs
+  const roomsCanon = Math.max(
+    1,
+    Number(
+      roomsProp ||
+        String(adultsProp || "")
+          .split(",")
+          .filter(Boolean).length ||
+        String(childrenProp || "")
+          .split(",")
+          .filter(Boolean).length ||
+        String(childrenAgesProp || "")
+          .split("|")
+          .filter(Boolean).length ||
+        1
+    )
+  );
+  const adultsCSV = String(
+    typeof adultsProp === "string" ? adultsProp : adultsProp ?? ""
+  );
+  const childrenCSV = String(
+    typeof childrenProp === "string" ? childrenProp : childrenProp ?? ""
+  );
+  const childrenAgesCSV = String(
+    typeof childrenAgesProp === "string"
+      ? childrenAgesProp
+      : Array.isArray(childrenAgesProp)
+      ? childrenAgesProp.join(",")
+      : ""
   );
 
-  // Legacy totals (used only for UI child components that may expect numbers/arrays)
+  // Legacy totals (UI կոմպոնենտների համար)
   const legacyChildrenTotal = useMemo(() => {
     return splitCSV(childrenCSV).reduce((sum, x) => sum + (Number(x) || 0), 0);
   }, [childrenCSV]);
 
   const legacyChildrenAgesFlat = useMemo(() => {
-    // flatten "a,b|c,d" → [a,b,c,d]   (rooms by '|', ages by ',')
+    // flatten "a,b|c,d" → [a,b,c,d]
     const blocks = String(childrenAgesCSV)
       .split(ROOMS_SEP)
-      .map((s) => s.trim())
-      .filter(Boolean);
+      .map((s) => s.trim());
     const flat = [];
     for (const blk of blocks) {
       if (!blk) continue;
@@ -316,22 +170,30 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
     return flat;
   }, [childrenAgesCSV]);
 
-  const arrivalDate = checkInDate || null;
-  const nights = toNights(checkInDate, checkOutDate, nightsFromStore);
-
   // ---------------- Resolve city code (async) ----------------
   useEffect(() => {
     let alive = true;
 
     (async () => {
-      if (cityCode) {
-        if (alive) setResolvedCityId(String(cityCode));
+      const readyId = cityIdProp ?? cityCode;
+      if (readyId) {
+        if (alive) {
+          setResolvedCityId(String(readyId));
+          console.debug("[SRV] resolveCity → immediate id", String(readyId));
+        }
         return;
       }
+
       if (locationInput && locationInput.trim()) {
         try {
           const code = await resolveCityCode(locationInput.trim(), "goglobal");
-          if (alive) setResolvedCityId(code || null);
+          if (alive) {
+            setResolvedCityId(code || null);
+            console.debug("[SRV] resolveCity → resolved", {
+              from: locationInput,
+              code,
+            });
+          }
         } catch (e) {
           console.warn("resolveCityCode failed:", e);
           if (alive) setResolvedCityId(null);
@@ -344,12 +206,17 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
     return () => {
       alive = false;
     };
-  }, [locationInput, cityCode]);
+  }, [locationInput, cityCode, cityIdProp]);
 
   // ---------------- Fetch supplier availability ----------------
   async function fetchSupplierAvailability(params) {
     setLoading(true);
     setErrorMsg("");
+
+    console.groupCollapsed("[SRV] FETCH → availability params");
+    console.table(params);
+    console.groupEnd();
+
     try {
       const {
         cityId,
@@ -358,8 +225,8 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
         rooms,
         adults, // CSV
         children, // CSV
-        childrenAges, // per-room CSV with pipes (rooms '|', ages ',')
-        maxHotels = 150,
+        childrenAges, // "9|10,12" (ensured)
+        maxHotels = 500,
         maxOffers = 5,
         includeInfo = 0,
         infoLimit = 3,
@@ -372,6 +239,11 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
           childrenAgesCSV: String(childrenAges || ""),
         })
       ) {
+        console.warn("[SRV] VALIDATION FAIL", {
+          rooms,
+          childrenCSV: String(children || ""),
+          childrenAgesCSV: String(childrenAges || ""),
+        });
         setAllHotels([]);
         setVisibleCount(CHUNK);
         setErrorMsg(
@@ -395,8 +267,9 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
       }).toString();
 
       const url = `/suppliers/goglobal/availability?${qs}`;
-      const resp = await api.get(url);
+      console.log("[SRV] FETCH → URL", url);
 
+      const resp = await api.get(url);
       const data = resp?.data || resp || {};
       const hotels =
         data.hotels || data.Hotels || data.results || data.data || [];
@@ -412,41 +285,113 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
     }
   }
 
+  // keep a key per nonce to avoid double-fetch with same params
+  const lastKeyByNonceRef = useRef({}); // { [nonce]: "cityId|arrival|nights|rooms|adults|children|ages" }
+
+  // Kick fetch when inputs change (but at most once per nonce)
   useEffect(() => {
     if (!resolvedCityId || !arrivalDate) return;
+
+    // ⬇️ ԱՅՍՏԵՂ՝ deps snapshot
+    console.debug("[SRV] effect deps", {
+      resolvedCityId,
+      arrivalDate,
+      nights,
+      roomsCanon,
+      adultsCSV,
+      childrenCSV,
+      childrenAgesCSV, // UI-ի արժեքը - առանց padding
+      nonce,
+    });
+
+    const apiAges = ensureAgesForApi(childrenCSV, childrenAgesCSV, 8);
+    console.debug("[SRV] apiAges (ensured only for API)", apiAges);
+
+    const key = [
+      resolvedCityId,
+      arrivalDate,
+      nights,
+      roomsCanon,
+      adultsCSV,
+      childrenCSV,
+      apiAges,
+    ].join("|");
+
+    const lastKey = lastKeyByNonceRef.current[nonce ?? "__no_nonce__"];
+    console.debug("[SRV] fetch-key check", { nonce, key, lastKey });
+
+    if (lastKey === key) {
+      console.debug("[SRV] skip duplicate fetch for same nonce/key");
+      return;
+    }
 
     fetchSupplierAvailability({
       cityId: resolvedCityId,
       arrivalDate,
       nights,
-      rooms: roomsCount,
+      rooms: roomsCanon,
       adults: adultsCSV,
       children: childrenCSV,
-      childrenAges: childrenAgesCSV,
+      childrenAges: apiAges,
       maxHotels: 150,
       maxOffers: 5,
       includeInfo: 0,
       infoLimit: 3,
+    }).then(() => {
+      lastKeyByNonceRef.current[nonce ?? "__no_nonce__"] = key;
+      console.debug("[SRV] fetch finished → key set", { nonce, key });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     resolvedCityId,
     arrivalDate,
     nights,
-    roomsCount,
+    roomsCanon,
     adultsCSV,
     childrenCSV,
     childrenAgesCSV,
     nonce,
   ]);
 
-  // ---------------- Convert (per-stay only, no *nights) ----------------
+  // 🔎 Debug: show UI values (not ensured)
+  useEffect(() => {
+    console.groupCollapsed("[SRV] ARRIVE → searchParams (UI) & CSVs");
+    console.log({
+      city: locationInput,
+      cityCode,
+      cityId: cityIdProp,
+      arrivalDate,
+      checkInDate,
+      checkOutDate,
+      nights,
+      roomsCanon,
+      adultsCSV,
+      childrenCSV,
+      childrenAgesCSV,
+      nonce,
+    });
+    console.groupEnd();
+  }, [
+    locationInput,
+    cityCode,
+    cityIdProp,
+    arrivalDate,
+    checkInDate,
+    checkOutDate,
+    nights,
+    roomsCanon,
+    adultsCSV,
+    childrenCSV,
+    childrenAgesCSV,
+    nonce,
+  ]);
+
+  /* ---------------- Pricing conversion (per-stay) ---------------- */
   const pricedHotels = useMemo(() => {
     const rates = publicSettings?.exchangeRates || null;
     const target = (currency || "").toUpperCase();
 
     return (allHotels || []).map((h) => {
-      // 🔁 ԱՆՎՏԱՆԳ FALLBACK-ԵՐ — ներառում ենք նաև minRetail
       const rawAmount = Number(
         h?.minRetail?.amount ??
           h?.minPrice?.amount ??
@@ -465,7 +410,6 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
           ""
       ).toUpperCase();
 
-      // եթե գումարը/արժույթը բացակայում են՝ թող վերադարձնենք ինչպես կա
       if (!isFinite(rawAmount) || rawAmount <= 0) {
         return {
           ...h,
@@ -474,7 +418,6 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
         };
       }
 
-      // target չկա կամ rates չկան, կամ արդեն նույն արժույթն է → պահում ենք supplier-ի արժեքը
       if (!target || !rates || target === rawCur) {
         return {
           ...h,
@@ -483,7 +426,6 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
         };
       }
 
-      // Փորձում ենք convert անել (AMD-based rates). Չստացվեց → supplier արժույթով
       const conv = tryConvert(rawAmount, rawCur, target, rates);
       if (conv?.ok) {
         return {
@@ -501,38 +443,75 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
     });
   }, [allHotels, currency, publicSettings]);
 
-  // ---------------- Local filter (min/max) ----------------
-  const toNum = (v) =>
-    v === "" || v === null || v === undefined ? NaN : Number(v);
+  /* ---------------- Local filtering + sorting ---------------- */
+  const normalizeBoardCode = (val) => {
+    const raw = String(val || "").trim();
+    if (!raw) return "";
 
-  // --- Boards normalization & price helpers (local-only) ---
-  const normalizeBoardCode = (board) => {
-    const s = String(board || "").toLowerCase();
+    const up = raw.toUpperCase();
+    const direct = ["RO", "BB", "HB", "FB", "AI", "CB", "BD", "UAI"];
+    if (direct.includes(up)) return up;
 
-    // Direct codes present already?
-    if (["ro", "bb", "hb", "fb", "ai", "uai"].includes(s))
-      return s.toUpperCase();
+    const t = up.replace(/[^A-Z]/g, "");
 
-    // Map common names to codes
-    if (s.includes("room only")) return "RO";
-    if (s.includes("bed & breakfast") || s.includes("breakfast")) return "BB";
-    if (s.includes("half")) return "HB";
-    if (s.includes("full")) return "FB";
-    if (s.includes("ultra")) return "UAI";
-    if (s.includes("all incl")) return "AI";
+    if (t.includes("ROOMONLY")) return "RO";
+    if (
+      t.includes("BEDANDBREAKFAST") ||
+      t.includes("BEDBREAKFAST") ||
+      t === "BREAKFAST"
+    )
+      return "BB";
+    if (t.includes("CONTINENTALBREAKFAST")) return "CB";
+    if (t.includes("HALFBOARD")) return "HB";
+    if (t.includes("FULLBOARD")) return "FB";
+    if (t.includes("ALLINCLUSIVE")) return "AI";
+    if (t.includes("BEDANDDINNER") || t === "BEDDINNER") return "BD";
+    if (t.includes("ULTRAINCLUSIVE")) return "UAI";
 
-    return ""; // unknown
+    if (up.includes("ROOM ONLY")) return "RO";
+    if (up.includes("BED & BREAKFAST") || up.includes("BED AND BREAKFAST"))
+      return "BB";
+    if (up.includes("CONTINENTAL BREAKFAST")) return "CB";
+    if (up.includes("HALF BOARD")) return "HB";
+    if (up.includes("FULL BOARD")) return "FB";
+    if (up.includes("ALL INCLUSIVE")) return "AI";
+    if (up.includes("BED AND DINNER")) return "BD";
+    if (up.includes("ULTRA INCLUSIVE")) return "UAI";
+
+    return "";
   };
 
-  const getHotelStars = (h) => {
-    // we have seen: h.category (number/string), h.stars
-    const raw =
-      h?.category ?? h?.stars ?? h?.StarRating ?? h?.HotelCategory ?? null;
-    const n = Number(raw);
-    return Number.isFinite(n) ? Math.max(0, Math.min(5, Math.round(n))) : 0;
+  const isPlatformRefundable = (off) => {
+    const plat = off?.cancellation?.platform;
+    if (plat && typeof plat.refundable === "boolean") {
+      if (!plat.refundable) return false;
+      const cutoff = plat?.cutoffUtc || off?.platformCutoffUtc;
+      if (!cutoff) return true;
+      return Date.now() < new Date(cutoff).getTime();
+    }
+
+    const supp = off?.cancellation?.supplier;
+    const deadlineUtc =
+      supp?.deadlineUtc ||
+      off?.cancellation?.supplierDeadlineUtc ||
+      off?.supplierDeadlineUtc;
+
+    const bufDays =
+      plat && Number.isFinite(plat.bufferDays)
+        ? plat.bufferDays
+        : Number.isFinite(off?.bufferDays)
+        ? off.bufferDays
+        : null;
+
+    if (deadlineUtc && bufDays != null) {
+      const cutoffMs =
+        new Date(deadlineUtc).getTime() - bufDays * 24 * 60 * 60 * 1000;
+      return Date.now() < cutoffMs;
+    }
+
+    return !!off?.refundable;
   };
 
-  // --- Collect all possible offer candidates from hotel payload ---
   const collectCandidateOffers = (hotel) => {
     const out = [];
 
@@ -580,45 +559,6 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
     return out;
   };
 
-  // --- Compute "platform refundable" (buffer-aware) ---
-  const isPlatformRefundable = (off) => {
-    // Preferred: explicit platform block
-    const plat = off?.cancellation?.platform;
-    if (plat && typeof plat.refundable === "boolean") {
-      if (!plat.refundable) return false;
-      const cutoff = plat?.cutoffUtc || off?.platformCutoffUtc;
-      if (!cutoff) return true;
-      return Date.now() < new Date(cutoff).getTime();
-    }
-
-    // Derive from supplier deadline + bufferDays if present
-    const supp = off?.cancellation?.supplier;
-    const deadlineUtc =
-      supp?.deadlineUtc ||
-      off?.cancellation?.supplierDeadlineUtc ||
-      off?.supplierDeadlineUtc;
-
-    const bufDays =
-      plat && Number.isFinite(plat.bufferDays)
-        ? plat.bufferDays
-        : Number.isFinite(off?.bufferDays)
-        ? off.bufferDays
-        : null;
-
-    if (deadlineUtc && bufDays != null) {
-      const cutoffMs =
-        new Date(deadlineUtc).getTime() - bufDays * 24 * 60 * 60 * 1000;
-      return Date.now() < cutoffMs;
-    }
-
-    // Fallback: use supplier refundable flag
-    return !!off?.refundable;
-  };
-
-  /**
-   * Compute min price among candidates that pass boards/refund filters.
-   * refundMode: "none" | "platform" | "supplier"
-   */
   const getMinFilteredPriceSafe = (
     hotel,
     selectedBoards,
@@ -633,11 +573,9 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
     let minCur = "";
 
     for (const off of candidates) {
-      // refund filter
       if (refundMode === "platform" && !isPlatformRefundable(off)) continue;
       if (refundMode === "supplier" && !off?.refundable) continue;
 
-      // board filter
       if (selectedBoards && selectedBoards.length > 0) {
         const code = normalizeBoardCode(off?.board || off?.RoomBasis || "");
         if (!code || !selectedBoards.includes(code)) continue;
@@ -668,36 +606,6 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
     }
   };
 
-  // const locallyFiltered = useMemo(() => {
-  //   let result = pricedHotels.filter((h) => h._displayTotal != null);
-
-  //   const min = toNum(uiFilters?.minPrice);
-  //   const max = toNum(uiFilters?.maxPrice);
-  //   const applyBounds = !Number.isNaN(min) || !Number.isNaN(max);
-
-  //   if (applyBounds) {
-  //     result = result.filter((h) => {
-  //       const amt = Number(h._displayTotal);
-  //       if (!Number.isNaN(min) && amt < min) return false;
-  //       if (!Number.isNaN(max) && amt > max) return false;
-  //       return true;
-  //     });
-  //   }
-
-  //   switch (sortBy) {
-  //     case "price_asc":
-  //       result.sort((a, b) => (a._displayTotal ?? 0) - (b._displayTotal ?? 0));
-  //       break;
-  //     case "price_desc":
-  //       result.sort((a, b) => (b._displayTotal ?? 0) - (a._displayTotal ?? 0));
-  //       break;
-  //     default:
-  //       break;
-  //   }
-
-  //   return result;
-  // }, [pricedHotels, uiFilters, sortBy]);
-
   const locallyFiltered = useMemo(() => {
     const rates = publicSettings?.exchangeRates || null;
     const target = (currency || "").toUpperCase();
@@ -708,27 +616,42 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
     const applyBounds = !Number.isNaN(min) || !Number.isNaN(max);
 
     const minStars = Number(uiFilters?.minStars) || 0;
-    const selectedBoards =
-      typeof uiFilters?.boards === "string" && uiFilters.boards.trim()
-        ? uiFilters.boards
-            .split(",")
-            .map((s) => s.trim().toUpperCase())
-            .filter(Boolean)
-        : [];
+    const selectedBoards = (() => {
+      const csv = String(uiFilters?.boards || "").trim();
+      if (!csv) return [];
+      const ALLOWED = new Set([
+        "RO",
+        "BB",
+        "HB",
+        "FB",
+        "AI",
+        "CB",
+        "BD",
+        "UAI",
+      ]);
+      return csv
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter((c) => ALLOWED.has(c));
+    })();
 
-    // Backward-compat: if old "refundable" boolean ever comes, treat as platform
     const refundMode =
       uiFilters?.refundMode || (uiFilters?.refundable ? "platform" : "none");
 
-    // 1) Base set: items with any base price
     let result = pricedHotels.filter((h) => h._displayTotal != null);
 
-    // 2) Stars
     if (minStars > 0) {
-      result = result.filter((h) => getHotelStars(h) >= minStars);
+      result = result.filter((h) => {
+        const raw =
+          h?.category ?? h?.stars ?? h?.StarRating ?? h?.HotelCategory ?? null;
+        const n = Number(raw);
+        const stars = Number.isFinite(n)
+          ? Math.max(0, Math.min(5, Math.round(n)))
+          : 0;
+        return stars >= minStars;
+      });
     }
 
-    // 3) Boards / Refunds → compute effective price
     result = result
       .map((h) => {
         let eff = h._displayTotal;
@@ -742,19 +665,13 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
             target
           );
 
-          if (!evaluable) {
-            // can't evaluate → keep as-is
-            eff = h._displayTotal;
-          } else {
-            eff = value == null ? null : value;
-          }
+          eff = evaluable ? (value == null ? null : value) : h._displayTotal;
         }
 
         return { ...h, _effectiveTotal: eff };
       })
       .filter((h) => h._effectiveTotal != null);
 
-    // 4) Price range
     if (applyBounds) {
       result = result.filter((h) => {
         const amt = Number(h._effectiveTotal);
@@ -764,7 +681,6 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
       });
     }
 
-    // 5) Sort
     switch (sortBy) {
       case "price_asc":
         result.sort(
@@ -810,7 +726,6 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
   }
 
   const showOverlay = loading && allHotels.length > 0;
-
   const wrapperClass =
     effectiveViewType === "grid" ? styles.gridWrapper : styles.listWrapper;
 
@@ -891,13 +806,15 @@ const SupplierResultsView = ({ searchParams, uiFilters }) => {
                 arrivalDate,
                 nights,
                 cityId: resolvedCityId,
-                rooms: roomsCount,
-                // Pass both CSV (authoritative) and legacy for compatibility
+                rooms: roomsCanon,
+                // pass UI CSVs as-is
                 adults: adultsCSV,
                 children: childrenCSV,
                 childrenAges: childrenAgesCSV,
+                // legacy helpers
                 legacyChildrenTotal,
                 legacyChildrenAgesFlat,
+                basis: uiFilters?.boards || "",
               }}
             />
           ))}

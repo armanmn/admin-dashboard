@@ -4,32 +4,66 @@
   overflow: visible;
 }
 
-.backBtn {
-  margin-bottom: 12px;
-  border: 1px solid #ccc;
-  background: #fff;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.headerStrip {
-  margin-bottom: 8px;
-  color: #444;
-}
-
-.changeBtn {
+/* -------- Details top bar -------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
-  border: 1px solid #ddd;
-  background: #fafafa;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
 }
 
+/* Back button – unobtrusive */
+.backBtn {
+  appearance: none;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.backBtn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+/* Chips row */
+.metaChips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.ico {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.sep {
+  color: #9ca3af;
+  margin: 0 6px;
+}
+
+/* --------- Layout: content + sticky rail --------- */
 .grid {
   display: grid;
-  grid-template-columns: minmax(0,1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 18px;
   align-items: start;
   overflow: visible;
@@ -39,7 +73,7 @@
 
 /* Sticky right rail
    Top-ը դնում ենք navbar-ի բարձրությամբ (+ փոքր բացթողում):
-   Կարող ես գլոբալում նշանակել --app-header-h փոփոխականը, բայց կա նաև fallback 64px.
+   Կարող ես գլոբալում նշանակել --app-header-h փոփոխականը, բայց կա նաև fallback 80px.
 */
 .rail {
   position: -webkit-sticky;
@@ -49,8 +83,10 @@
   z-index: 5;
 }
 
-/* tighter top on small screens, եթե header-ը ավելի բարակ է */
+/* tighter top on small screens */
 @media (max-width: 1024px) {
   .grid { grid-template-columns: 1fr; }
   .rail { position: static; top: auto; }
+  .chip { font-size: 12px; padding: 5px 8px; }
+  .backBtn { padding: 7px 10px; }
 }
