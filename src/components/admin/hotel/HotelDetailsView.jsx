@@ -33,6 +33,7 @@
 //     return null;
 //   }
 // }
+// /** date util */
 // function addDaysIso(iso, days) {
 //   if (!iso) return null;
 //   const d = new Date(iso);
@@ -98,7 +99,7 @@
 //   return groups.map((g) => g.length);
 // }
 
-// // For Debug
+// /** --- Debug helpers --- */
 // const parseCounts = (csv) =>
 //   String(csv || "")
 //     .split(",")
@@ -125,9 +126,9 @@
 //   }
 //   return true;
 // }
-// // End of Debug
 
 // export default function HotelDetailsView(props) {
+//   // ------- props (backup / UI wiring) -------
 //   const {
 //     hotel: hotelProp,
 //     offers: offersProp = [],
@@ -143,7 +144,7 @@
 //     user,
 //     exchangeRates,
 //     settings,
-//     onBack,
+//     onBack, // if provided
 //     onCheckAvailability,
 //     fullAddress,
 //     areaLabel,
@@ -160,7 +161,6 @@
 //   const sp = useMemo(() => getSearchParams(), []);
 //   const qsMap = useMemo(() => Object.fromEntries(sp.entries()), [sp]);
 //   const snap = useMemo(() => getSnap(), []);
-
 //   const hotelId =
 //     hotelProp?.hotelId ||
 //     hotelProp?._id ||
@@ -204,36 +204,84 @@
 //   const searchCodeQ = qsMap.searchCode || "";
 
 //   // --- Canonical guests/rooms ---
-//   const { canonRooms, canonAdultsCSV, canonChildrenCSV, canonChildrenAgesCSV } =
-//     useMemo(() => {
-//       // detect rooms from any signal we have
-//       const Rdetected = detectRooms(
-//         adultsCSVRaw,
-//         childrenCSVRaw,
-//         childrenAgesCSVRaw,
-//         roomsInitial
+//   const {
+//     canonRooms,
+//     canonAdultsCSV,
+//     canonChildrenCSV,
+//     canonChildrenAgesCSV,
+//     kidsOk,
+//   } = useMemo(() => {
+//     // detect rooms from any signal we have
+//     const Rdetected = detectRooms(
+//       adultsCSVRaw,
+//       childrenCSVRaw,
+//       childrenAgesCSVRaw,
+//       roomsInitial
+//     );
+
+//     // if ages present → children counts come from ages; else normalize CSV by rooms
+//     let childrenCSV = childrenCSVRaw;
+//     if (String(childrenAgesCSVRaw || "").trim()) {
+//       childrenCSV = childrenCountsFromAges(childrenAgesCSVRaw, Rdetected).join(
+//         ","
 //       );
+//     } else {
+//       childrenCSV = normalizeChildrenCSV(childrenCSVRaw, Rdetected);
+//     }
 
-//       // if ages present → children counts come from ages
-//       let childrenCSV = childrenCSVRaw;
-//       if (String(childrenAgesCSVRaw || "").trim()) {
-//         childrenCSV = childrenCountsFromAges(
-//           childrenAgesCSVRaw,
-//           Rdetected
-//         ).join(",");
-//       } else {
-//         childrenCSV = normalizeChildrenCSV(childrenCSVRaw, Rdetected);
-//       }
+//     const adultsCSV = normalizeAdultsCSV(adultsCSVRaw, Rdetected);
+//     const agesCSV = String(childrenAgesCSVRaw || "");
+//     const ok = shapeOK(childrenCSV, agesCSV);
 
-//       return {
-//         canonRooms: Rdetected,
-//         canonAdultsCSV: normalizeAdultsCSV(adultsCSVRaw, Rdetected),
-//         canonChildrenCSV: childrenCSV,
-//         canonChildrenAgesCSV: String(childrenAgesCSVRaw || ""),
-//       };
-//     }, [adultsCSVRaw, childrenCSVRaw, childrenAgesCSVRaw, roomsInitial]);
+//     return {
+//       canonRooms: Rdetected,
+//       canonAdultsCSV: adultsCSV,
+//       canonChildrenCSV: childrenCSV,
+//       canonChildrenAgesCSV: agesCSV,
+//       kidsOk: ok,
+//     };
+//   }, [adultsCSVRaw, childrenCSVRaw, childrenAgesCSVRaw, roomsInitial]);
 
-//   // ---- build request QS ----
+//   // ---------------- ARRIVE DEBUG ----------------
+//   useEffect(() => {
+//     console.groupCollapsed("[HD] ARRIVE → inputs & canonical");
+//     console.log("URL qs:", qsMap);
+//     console.log("Snapshot:", snap);
+//     console.table({
+//       roomsInitial,
+//       adultsCSVRaw,
+//       childrenCSVRaw,
+//       childrenAgesCSVRaw,
+//       arrivalDate,
+//       nights,
+//       cityId,
+//     });
+//     console.table({
+//       canonRooms,
+//       canonAdultsCSV,
+//       canonChildrenCSV,
+//       canonChildrenAgesCSV,
+//       kidsOk,
+//     });
+//     console.groupEnd();
+//   }, [
+//     qsMap,
+//     snap,
+//     roomsInitial,
+//     adultsCSVRaw,
+//     childrenCSVRaw,
+//     childrenAgesCSVRaw,
+//     arrivalDate,
+//     nights,
+//     cityId,
+//     canonRooms,
+//     canonAdultsCSV,
+//     canonChildrenCSV,
+//     canonChildrenAgesCSV,
+//     kidsOk,
+//   ]);
+
+//   // ---- build request QS for live fetch ----
 //   const reqQs = useMemo(() => {
 //     const base = new URLSearchParams({
 //       cityId: String(cityId || ""),
@@ -263,7 +311,7 @@
 //     searchCodeQ,
 //   ]);
 
-//   // ------- live fetch -------
+//   // ------- live fetch /hotel-availability -------
 //   const [live, setLive] = useState(null);
 //   const [loading, setLoading] = useState(true);
 
@@ -272,15 +320,19 @@
 //     setLoading(true);
 //     const ac = new AbortController();
 
+//     const url = `/suppliers/goglobal/hotel-availability?${reqQs.toString()}`;
+//     console.groupCollapsed("[HD] FETCH → hotel-availability");
+//     console.log("GET:", url);
+//     console.groupEnd();
+
 //     api
-//       .get(`/suppliers/goglobal/hotel-availability?${reqQs.toString()}`, {
-//         signal: ac.signal,
-//       })
+//       .get(url, { signal: ac.signal })
 //       .then(({ data }) => {
 //         if (!ignore) setLive(data);
 //       })
-//       .catch(() => {
+//       .catch((e) => {
 //         if (!ignore) setLive(null);
+//         console.warn("[HD] fetch error:", e);
 //       })
 //       .finally(() => {
 //         if (!ignore) setLoading(false);
@@ -292,7 +344,7 @@
 //     };
 //   }, [reqQs]);
 
-//   // ------- choose data: live → props -------
+//   // ------- choose data: live → props fallback -------
 //   const hotelLive = live?.hotel || null;
 //   const hotel = hotelLive || hotelProp || null;
 //   const offersLive = hotelLive?.offers || [];
@@ -309,14 +361,14 @@
 //   const checkOut =
 //     checkOutDateProp || addDaysIso(arrivalDate, headerNights) || "—";
 
-//   // totals for UI
+//   // adult/children totals for chips
 //   const totalAdults = useMemo(() => sumCsv(canonAdultsCSV), [canonAdultsCSV]);
 //   const totalChildren = useMemo(
 //     () => sumCsv(canonChildrenCSV),
 //     [canonChildrenCSV]
 //   );
 
-//   // ---- selection actions ----
+//   // ---- selection actions (unchanged) ----
 //   const addItem = useSelectionStore((s) => s.addItem);
 //   const upsertItem = useSelectionStore((s) => s.upsertItem);
 //   const pushItem = useSelectionStore((s) => s.add || s.pushItem);
@@ -330,23 +382,10 @@
 //     [addItem, upsertItem, pushItem]
 //   );
 
-//   // ---- Back handler ----
+//   const RESULTS_PATH = "/admin/bookings/hotel";
+
 //   const onBackClick = useCallback(() => {
-//     if (typeof onBack === "function") {
-//       try {
-//         onBack();
-//         return;
-//       } catch {}
-//     }
-
-//     try {
-//       if (typeof window !== "undefined" && window.history?.state?.idx > 0) {
-//         router.back();
-//         return;
-//       }
-//     } catch {}
-
-//     // Fallback: build /admin/hotel URL
+//     // snapshot (որպես fallback)
 //     let snapData = null;
 //     try {
 //       snapData = JSON.parse(
@@ -355,25 +394,34 @@
 //     } catch {}
 
 //     const crit = snapData?.criteria || {};
-//     const q = new URLSearchParams({
+
+//     // SupplierResultsView-ը կարդում է cityCode (քեզ մոտ դա cityId-ն է snapshot-ում)
+//     const cityCodeFromSnap = String(crit?.cityId || "");
+
+//     const backParams = {
 //       city: String(hotel?.location?.city || ""),
-//       // ⚠️ use cityId, not cityCode
-//       cityId: String(crit?.cityId || ""),
+//       cityCode: cityCodeFromSnap, // ✅ սա կընկնի SupplierResultsView-ի մեջ որպես resolvedCityId
 //       checkInDate: String(arrivalDate || ""),
 //       checkOutDate: String(checkOut || ""),
 //       rooms: String(canonRooms || 1),
 //       adults: String(canonAdultsCSV || "2"),
 //       children: String(canonChildrenCSV || "0"),
-//       ...(totalChildren > 0
-//         ? { childrenAges: String(canonChildrenAgesCSV || "") }
-//         : {}),
-//     }).toString();
+//     };
+//     if (totalChildren > 0) {
+//       backParams.childrenAges = String(canonChildrenAgesCSV || "");
+//     }
 
-//     console.log(`onBackClick = ${q}`);
+//     const q = new URLSearchParams(backParams).toString();
+//     const backHref = `${RESULTS_PATH}?${q}`;
 
-//     router.push(`/admin/hotel?${q}`);
+//     console.groupCollapsed("[HD] BACK → results payload");
+//     console.table(backParams);
+//     console.log("→ href:", backHref);
+//     console.groupEnd();
+
+//     // always push՝ որ URL-ը լինի կանոնական
+//     router.push(backHref);
 //   }, [
-//     onBack,
 //     router,
 //     hotel?.location?.city,
 //     arrivalDate,
@@ -387,7 +435,7 @@
 
 //   return (
 //     <div className={styles.page} style={{ "--app-header-h": "80px" }}>
-//       {/* TOP BAR */}
+//       {/* TOP BAR: back + chips */}
 //       <div className={styles.topbar}>
 //         <button className={styles.backBtn} onClick={onBackClick}>
 //           ← Back to results
@@ -400,6 +448,7 @@
 //             </span>
 //             {hotel?.location?.city || "—"}
 //           </span>
+
 //           <span className={styles.chip}>
 //             <span className={styles.ico} aria-hidden>
 //               📅
@@ -414,6 +463,7 @@
 //               </>
 //             ) : null}
 //           </span>
+
 //           <span className={styles.chip}>
 //             <span className={styles.ico} aria-hidden>
 //               👥
@@ -426,6 +476,7 @@
 //               </>
 //             ) : null}
 //           </span>
+
 //           <span className={styles.chip}>
 //             <span className={styles.ico} aria-hidden>
 //               🛏️
@@ -491,6 +542,11 @@ import OffersList from "@/components/admin/hotel/OffersList";
 import SelectionSummary from "@/components/admin/hotel/SelectionSummary";
 import { useSelectionStore } from "@/stores/selectionStore";
 import api from "@/utils/api";
+
+/* ⬇️ NEW: currency conversion deps */
+import { useCurrencyStore } from "@/stores/currencyStore";
+import usePublicSettings from "@/hooks/usePublicSettings";
+import { tryConvert } from "@/utils/fx";
 
 /** ——— helpers ——— */
 function getSnap() {
@@ -639,6 +695,17 @@ export default function HotelDetailsView(props) {
   } = props;
 
   const router = useRouter();
+
+  const hasAnySelection = useSelectionStore((s) => {
+    // փորձենք ամենատարածված դաշտերը
+    const pools = [s.items, s.list, s.selection, s.cart];
+    for (const p of pools) if (Array.isArray(p) && p.length > 0) return true;
+    return Boolean(s.current || s.item);
+  });
+
+  /* ⬇️ NEW: navbar currency + public settings (rates) */
+  const { currency } = useCurrencyStore();
+  const publicSettings = usePublicSettings();
 
   // ------- read URL + snapshot -------
   const sp = useMemo(() => getSearchParams(), []);
@@ -814,6 +881,8 @@ export default function HotelDetailsView(props) {
         if (!ignore) setLive(data);
       })
       .catch((e) => {
+        // AbortError-ը նորմալ է effect cleanup-ի ժամանակ → ոչ մի աղմուկ
+        if (e?.name === "AbortError" || e?.code === 20) return;
         if (!ignore) setLive(null);
         console.warn("[HD] fetch error:", e);
       })
@@ -838,6 +907,66 @@ export default function HotelDetailsView(props) {
     : offersProp;
   const list = offersLive.length ? offersLive : offersFromProps;
 
+  // ⬇️ NEW: decorate offers with currency conversion (and overwrite common fields)
+  const decoratedList = useMemo(() => {
+    const target = String(currency || "").toUpperCase();
+    const rates =
+      publicSettings?.exchangeRates || settings?.exchangeRates || exchangeRates;
+
+    // early exit
+    if (!Array.isArray(list) || list.length === 0) return [];
+
+    const mapOne = (off) => {
+      const rawAmount = Number(
+        off?.retail?.amount ?? off?.price?.amount ?? off?.amount ?? NaN
+      );
+      const rawCur = String(
+        off?.retail?.currency || off?.price?.currency || off?.currency || ""
+      ).toUpperCase();
+
+      let finalAmt = rawAmount;
+      let finalCur = rawCur;
+
+      if (
+        target &&
+        target !== rawCur &&
+        Number.isFinite(rawAmount) &&
+        rawAmount > 0 &&
+        rates
+      ) {
+        const conv = tryConvert(rawAmount, rawCur, target, rates);
+        if (conv?.ok) {
+          finalAmt = Number(conv.value);
+          finalCur = target;
+        }
+      }
+
+      // ensure commonly-used fields reflect converted values
+      const commonPrice = { amount: finalAmt, currency: finalCur };
+
+      return {
+        ...off,
+        _displayTotal: finalAmt,
+        _displayCurrency: finalCur,
+        retail: { ...(off.retail || {}), ...commonPrice },
+        price: { ...(off.price || {}), ...commonPrice },
+        amount: finalAmt,
+        currency: finalCur,
+      };
+    };
+
+    const out = list.map(mapOne);
+
+    try {
+      console.groupCollapsed("[HD] offers → decorated currency");
+      console.log("target:", target || "(none)");
+      console.log("count:", out.length);
+      console.groupEnd();
+    } catch {}
+
+    return out;
+  }, [list, currency, publicSettings, settings, exchangeRates]);
+
   // header stripe dates
   const headerArrival = arrivalDate || arrivalDateProp || "—";
   const headerNights = nights || nightsProp || 1;
@@ -857,83 +986,17 @@ export default function HotelDetailsView(props) {
   const pushItem = useSelectionStore((s) => s.add || s.pushItem);
   const onSelectOffer = useCallback(
     (payload) => {
+      if (hasAnySelection) {
+        console.debug("[HD] selection is locked → ignore select");
+        return;
+      }
       if (typeof upsertItem === "function") return upsertItem(payload);
       if (typeof addItem === "function") return addItem(payload);
       if (typeof pushItem === "function") return pushItem(payload);
       console.warn("No selection add/upsert action in selectionStore");
     },
-    [addItem, upsertItem, pushItem]
+    [addItem, upsertItem, pushItem, hasAnySelection]
   );
-
-  // ---- Back handler: use prop if provided; else smart fallback to listing ----
-  // const onBackClick = useCallback(() => {
-  //   // 1) If parent provided onBack (HotelDetailsPage → router.back()), use it.
-  //   if (typeof onBack === "function") {
-  //     try {
-  //       onBack();
-  //       return;
-  //     } catch {}
-  //   }
-
-  //   // 2) If there is a real history entry, go back.
-  //   try {
-  //     if (typeof window !== "undefined" && window.history?.state?.idx > 0) {
-  //       router.back();
-  //       return;
-  //     }
-  //   } catch {}
-
-  //   // 3) Fallback: rebuild /admin/hotel with snapshot criteria + canonical on this page
-  //   let snapData = null;
-  //   try {
-  //     snapData = JSON.parse(
-  //       sessionStorage.getItem("lastHotelSnapshot") || "{}"
-  //     );
-  //   } catch {}
-
-  //   const crit = snapData?.criteria || {};
-
-  //   const q = new URLSearchParams({
-  //     city: String(hotel?.location?.city || ""),
-  //     cityId: String(crit?.cityId || ""), // keep original cityId fallback
-  //     checkInDate: String(arrivalDate || ""),
-  //     checkOutDate: String(checkOut || ""),
-  //     rooms: String(canonRooms || 1),
-  //     adults: String(canonAdultsCSV || "2"),
-  //     children: String(canonChildrenCSV || "0"),
-  //     ...(totalChildren > 0
-  //       ? { childrenAges: String(canonChildrenAgesCSV || "") }
-  //       : {}),
-  //   }).toString();
-
-  //   const backHref = `/admin/hotel?${q}`;
-
-  //   console.groupCollapsed("[HD] BACK → results payload");
-  //   console.table({
-  //     rooms: Number(canonRooms || 1),
-  //     adultsCSV: String(canonAdultsCSV || ""),
-  //     childrenCSV: String(canonChildrenCSV || ""),
-  //     childrenAgesCSV: totalChildren > 0 ? String(canonChildrenAgesCSV || "") : "",
-  //     arrivalDate: String(arrivalDate || ""),
-  //     checkOutDate: String(checkOut || ""),
-  //     cityId: String(crit?.cityId || ""),
-  //   });
-  //   console.log("→ href:", backHref);
-  //   console.groupEnd();
-
-  //   router.push(backHref);
-  // }, [
-  //   onBack,
-  //   router,
-  //   hotel?.location?.city,
-  //   arrivalDate,
-  //   checkOut,
-  //   canonRooms,
-  //   canonAdultsCSV,
-  //   canonChildrenCSV,
-  //   canonChildrenAgesCSV,
-  //   totalChildren,
-  // ]);
 
   const RESULTS_PATH = "/admin/bookings/hotel";
 
@@ -953,7 +1016,7 @@ export default function HotelDetailsView(props) {
 
     const backParams = {
       city: String(hotel?.location?.city || ""),
-      cityCode: cityCodeFromSnap, // ✅ սա կընկնի SupplierResultsView-ի մեջ որպես resolvedCityId
+      cityCode: cityCodeFromSnap,
       checkInDate: String(arrivalDate || ""),
       checkOutDate: String(checkOut || ""),
       rooms: String(canonRooms || 1),
@@ -972,7 +1035,6 @@ export default function HotelDetailsView(props) {
     console.log("→ href:", backHref);
     console.groupEnd();
 
-    // always push՝ որ URL-ը լինի կանոնական
     router.push(backHref);
   }, [
     router,
@@ -1056,9 +1118,11 @@ export default function HotelDetailsView(props) {
 
           <div className={styles.offersBlock}>
             <OffersList
-              offers={list}
+              /* pass converted offers */
+              offers={decoratedList}
               arrivalDate={arrivalDate}
               onSelectOffer={onSelectOffer}
+              selectionLocked={hasAnySelection}
             />
           </div>
         </div>

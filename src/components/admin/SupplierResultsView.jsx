@@ -11,6 +11,11 @@ import { resolveCityCode } from "@/utils/citySearch";
 import { differenceInCalendarDays, isValid } from "date-fns";
 import { tryConvert } from "@/utils/fx";
 import styles from "@/styles/supplierResultsView.module.css";
+import {
+  getAvailFromCache,
+  setAvailToCache,
+  makeAvailKey,
+} from "@/utils/searchCache";
 
 // guests utils
 import {
@@ -208,7 +213,6 @@ const SupplierResultsView = ({ searchParams = {}, uiFilters }) => {
     };
   }, [locationInput, cityCode, cityIdProp]);
 
-  // ---------------- Fetch supplier availability ----------------
   async function fetchSupplierAvailability(params) {
     setLoading(true);
     setErrorMsg("");
@@ -249,7 +253,7 @@ const SupplierResultsView = ({ searchParams = {}, uiFilters }) => {
         setErrorMsg(
           "Խնդրում ենք նշել երեխաների տարիքները ըստ սենյակների (0–17)։"
         );
-        return;
+        return []; // ⬅️ վերադարձնում ենք դատարկ զանգված
       }
 
       const qs = new URLSearchParams({
@@ -274,12 +278,15 @@ const SupplierResultsView = ({ searchParams = {}, uiFilters }) => {
       const hotels =
         data.hotels || data.Hotels || data.results || data.data || [];
 
-      setAllHotels(Array.isArray(hotels) ? hotels : []);
+      const safe = Array.isArray(hotels) ? hotels : [];
+      setAllHotels(safe);
       setVisibleCount(CHUNK);
+      return safe; // ⬅️ կարևոր է՝ վերադարձնում ենք
     } catch (err) {
       console.error("[Supplier] availability error", err);
       setAllHotels([]);
       setErrorMsg("Չհաջողվեց ստանալ առկայությունը։ Փորձեք մի քիչ հետո։");
+      return []; // ⬅️ վերադարձնել դատարկը, որ .then(hotels) միշտ աշխատի
     } finally {
       setLoading(false);
     }
@@ -288,11 +295,10 @@ const SupplierResultsView = ({ searchParams = {}, uiFilters }) => {
   // keep a key per nonce to avoid double-fetch with same params
   const lastKeyByNonceRef = useRef({}); // { [nonce]: "cityId|arrival|nights|rooms|adults|children|ages" }
 
-  // Kick fetch when inputs change (but at most once per nonce)
   useEffect(() => {
     if (!resolvedCityId || !arrivalDate) return;
 
-    // ⬇️ ԱՅՍՏԵՂ՝ deps snapshot
+    // deps snapshot
     console.debug("[SRV] effect deps", {
       resolvedCityId,
       arrivalDate,
@@ -300,31 +306,52 @@ const SupplierResultsView = ({ searchParams = {}, uiFilters }) => {
       roomsCanon,
       adultsCSV,
       childrenCSV,
-      childrenAgesCSV, // UI-ի արժեքը - առանց padding
+      childrenAgesCSV, // UI արժեքը՝ առանց padding
       nonce,
     });
 
+    // ages ensured միայն API-ի համար
     const apiAges = ensureAgesForApi(childrenCSV, childrenAgesCSV, 8);
     console.debug("[SRV] apiAges (ensured only for API)", apiAges);
 
-    const key = [
-      resolvedCityId,
+    // cache key
+    const cacheKey = makeAvailKey({
+      provider: "goglobal",
+      cityId: resolvedCityId,
       arrivalDate,
       nights,
-      roomsCanon,
-      adultsCSV,
-      childrenCSV,
-      apiAges,
-    ].join("|");
+      rooms: roomsCanon,
+      adults: adultsCSV,
+      children: childrenCSV,
+      childrenAges: apiAges,
+    });
 
+    // duplicate-skip per nonce
     const lastKey = lastKeyByNonceRef.current[nonce ?? "__no_nonce__"];
-    console.debug("[SRV] fetch-key check", { nonce, key, lastKey });
+    console.debug("[SRV] fetch-key check", { nonce, cacheKey, lastKey });
 
-    if (lastKey === key) {
+    // 1) Cache HIT → render instantly, skip network
+    const cached = getAvailFromCache(cacheKey);
+    if (cached) {
+      console.debug("[SRV] cache HIT → render", {
+        cacheKey,
+        count: cached.length,
+      });
+      setAllHotels(Array.isArray(cached) ? cached : []);
+      setVisibleCount(CHUNK);
+      setLoading(false);
+      setErrorMsg("");
+      lastKeyByNonceRef.current[nonce ?? "__no_nonce__"] = cacheKey;
+      return;
+    }
+
+    // 2) Same nonce + same key → skip
+    if (lastKey === cacheKey) {
       console.debug("[SRV] skip duplicate fetch for same nonce/key");
       return;
     }
 
+    // 3) MISS → fetch → cache SET
     fetchSupplierAvailability({
       cityId: resolvedCityId,
       arrivalDate,
@@ -337,9 +364,13 @@ const SupplierResultsView = ({ searchParams = {}, uiFilters }) => {
       maxOffers: 5,
       includeInfo: 0,
       infoLimit: 3,
-    }).then(() => {
-      lastKeyByNonceRef.current[nonce ?? "__no_nonce__"] = key;
-      console.debug("[SRV] fetch finished → key set", { nonce, key });
+    }).then((hotels) => {
+      setAvailToCache(cacheKey, Array.isArray(hotels) ? hotels : []);
+      lastKeyByNonceRef.current[nonce ?? "__no_nonce__"] = cacheKey;
+      console.debug("[SRV] cache SET", {
+        cacheKey,
+        count: hotels?.length ?? 0,
+      });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [

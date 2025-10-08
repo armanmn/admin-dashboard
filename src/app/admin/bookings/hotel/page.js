@@ -14,6 +14,8 @@ import {
   normalizeChildrenCSV,
 } from "@/utils/childrenCsv";
 
+const ENABLE_SEARCH_SESSIONS = false;
+
 /* ---------------- date helpers ---------------- */
 const computeNights = (ci, co) => {
   if (!ci || !co) return 1;
@@ -226,19 +228,24 @@ export default function HotelBookingPage() {
         });
 
         // optional: post session (non-blocking)
-        api
-          .post("/search-sessions/hotel", {
-            cityCode: normalized.cityCode,
-            arrivalDate: normalized.arrivalDate,
-            nights: normalized.nights,
-            rooms: normalized.rooms,
-            adultsCSV: normalized.adults,
-            childrenCSV: normalized.children,
-            childrenAgesCSV: normalized.childrenAges,
-          })
-          .catch((e) =>
-            console.warn("[HBP] session post (URL) failed", e?.message || e)
-          );
+        if (ENABLE_SEARCH_SESSIONS) {
+          api
+            .post("/search-sessions/hotel", {
+              cityCode: normalized.cityCode,
+              arrivalDate: normalized.arrivalDate,
+              nights: normalized.nights,
+              rooms: normalized.rooms,
+              adultsCSV: normalized.adults,
+              childrenCSV: normalized.children,
+              childrenAgesCSV: normalized.childrenAges,
+            })
+            .catch((e) =>
+              console.warn(
+                "[HBP] session post (snapshot) failed",
+                e?.message || e
+              )
+            );
+        }
         bumpNonce?.();
         return;
       }
@@ -291,20 +298,25 @@ export default function HotelBookingPage() {
         childrenAges: normalized.childrenAges,
       });
 
-      // // optional: post session (non-blocking)
-      // api
-      //   .post("/search-sessions/hotel", {
-      //     cityCode: normalized.cityCode,
-      //     arrivalDate: normalized.arrivalDate,
-      //     nights: normalized.nights,
-      //     rooms: normalized.rooms,
-      //     adultsCSV: normalized.adults,
-      //     childrenCSV: normalized.children,
-      //     childrenAgesCSV: normalized.childrenAges,
-      //   })
-      //   .catch((e) =>
-      //     console.warn("[HBP] session post (snapshot) failed", e?.message || e)
-      //   );
+      // optional: post session (non-blocking)
+      if (ENABLE_SEARCH_SESSIONS) {
+        api
+          .post("/search-sessions/hotel", {
+            cityCode: normalized.cityCode,
+            arrivalDate: normalized.arrivalDate,
+            nights: normalized.nights,
+            rooms: normalized.rooms,
+            adultsCSV: normalized.adults,
+            childrenCSV: normalized.children,
+            childrenAgesCSV: normalized.childrenAges,
+          })
+          .catch((e) =>
+            console.warn(
+              "[HBP] session post (snapshot) failed",
+              e?.message || e
+            )
+          );
+      }
 
       bumpNonce?.();
       sessionStorage.removeItem("lastHotelSnapshot");
@@ -374,8 +386,9 @@ export default function HotelBookingPage() {
       } catch {}
 
       // 5) optional: POST search session (non-blocking)
-      api
-        .post("/search-sessions/hotel", {
+      // HotelBookingPage.handleSearch (onSearch-ից հետո, եթե ունես նման բլոկ)
+      if (ENABLE_SEARCH_SESSIONS) {
+        const sessionPayload = {
           cityCode: normalized.cityCode,
           arrivalDate: normalized.arrivalDate,
           nights: normalized.nights,
@@ -383,10 +396,13 @@ export default function HotelBookingPage() {
           adultsCSV: normalized.adults,
           childrenCSV: normalized.children,
           childrenAgesCSV: normalized.childrenAges,
-        })
-        .catch((e) =>
-          console.warn("[HBP] session post (search) failed", e?.message || e)
-        );
+        };
+        api
+          .post("/search-sessions/hotel", sessionPayload)
+          .catch((e) =>
+            console.warn("[HBP] session post (search) failed", e?.message || e)
+          );
+      }
     },
     [setCriteria, bumpNonce]
   );
